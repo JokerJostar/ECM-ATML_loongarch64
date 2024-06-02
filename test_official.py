@@ -115,7 +115,7 @@ if __name__ == '__main__':
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers,
                             prefetch_factor=prefetch_factor, persistent_workers=persistent_workers)
 
-    model = torch.load('96-95/saved_net.pth')
+    model = torch.load('temp/saved_model/saved.pth', map_location=device)
     model = model.to(device)  # Move the model to the same device as the input data
 
     model.eval()  # 设置为评估模式
