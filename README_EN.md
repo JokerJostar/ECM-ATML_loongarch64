@@ -14,25 +14,24 @@ The directory structure of this project is as follows:
 
 ```
 ECM
-├── xx-yy                     # Location to store models and score satisfying the standard (xx is the maximum value of the metric, yy is the minimum value)
-├── avoid.txt                 # Records hyperparameter configurations that do not meet the standard
-├── dataset.py                # Dataset class
-├── onnx_log                  # ONNX export logs
-├── params.py                 # Hyperparameter settings
-├── public                    # Classes and methods
-│   ├── model.py              # Model architecture
-│   └── test.py               # Definition of basic metric tests
-├── __pycache__               # Python cache files
-├── README.md                 # Chinese README file
-├── README_EN.md              # English README file
-├── record_official           # Official metric records
-├── temp                      # Temporary folder
-│   ├── records               # Basic metric records for each iteration
-│   └── saved_model           # Models saved for each iteration
-├── test_data                 # Test data
-├── test_official.py          # Official metric testing script
-├── train_auto.py             # Training script
-└── train_data                # Training data
+├── xx-yy                     # Location storing models and indicator scores that meet the standards (xx for the maximum value of the indicator, yy for the minimum value).
+├── avoid.txt                 # Records configurations of hyperparameters that do not meet the standards.
+├── loongarch                 # Adaptation conversion for loongarch.
+├── public                    # Classes and methods.
+│   ├── dataset.py            # Dataset class.
+│   ├── model.py              # Model architecture.
+│   └── test.py               # Definitions for basic indicator testing.
+├── __pycache__               # Python cache files.
+├── README.md                 # Chinese readme file.
+├── README_EN.md              # English readme file.
+├── record_official           # Official indicator records.
+├── temp                      # Temporary folder.
+│   ├── records               # Basic indicator records for each loop.
+│   └── saved_model           # Models saved for each loop.
+├── test_data                 # Test data.
+├── test_official.py          # Official indicator testing script.
+├── train_auto.py             # Training script.
+└── train_data                # Training data.
 ```
 
 ## Training Code Structure
@@ -60,10 +59,7 @@ ECM
 6. **Early Stopping**:
    - The code implements early stopping to prevent overfitting. If the validation loss does not improve over a certain number of epochs, training is stopped early.
 
-7. **ONNX Export**:
-   - After training, the code exports the trained model to ONNX format, allowing it to be used in other frameworks or deployed to production environments.
-
-8. **Final Testing**:
+7. **Final Testing**:
    - The code tests the finally trained model on separate test data to ensure its generalization performance.
    - Evaluation metrics are computed and recorded for further analysis.
 
@@ -71,7 +67,6 @@ ECM
 1. **Data Preparation**: Place the training and testing data in the `train_data/` and `test_data/` directories, respectively.
 2. **Training**: Run the `train_auto.py` script to start training. During training, model and metric records will be saved in the `temp/` directory.
 3. **Testing**: Evaluate the trained model on test data using the `test_official.py` script.
-4. **ONNX Export**: After training, the model can be exported to ONNX format. Check the `onnx_log/` directory for export logs.
 
 ## Installation
 To install the required dependencies, you can create a new conda environment using the following command:
