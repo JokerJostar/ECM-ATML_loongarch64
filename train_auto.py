@@ -75,11 +75,11 @@ def check_and_rename_folder(max_metric, min_metric, root_dir='.'):
         match = re.match(r'(\d+)-(\d+)', folder_name)
         if match:
             xx, yy = map(int, match.groups())
-            if 89 <= xx <= 101 and 89 <= yy <= 101 and min_metric > yy:
+            if 1 <= xx <= 101 and 1 <= yy <= 101 and min_metric > yy:
                 new_folder_name = f'{int(max_metric)}-{int(min_metric)}'
                 os.rename(os.path.join(root_dir, folder_name), os.path.join(root_dir, new_folder_name))
                 for file_name in os.listdir(os.path.join(root_dir, new_folder_name)):
-                    if file_name.endswith('.pth') or file_name.endswith('.onnx'):
+                    if file_name.endswith('.pth'):
                         shutil.copy(f'temp/saved_model/{file_name}', os.path.join(root_dir, new_folder_name, file_name))
                     elif file_name.endswith('.txt'):
                         shutil.copy(f'temp/records/{file_name}', os.path.join(root_dir, new_folder_name, file_name))
@@ -175,18 +175,9 @@ def main():
 
             if not os.path.exists('temp/saved_model'):
                 os.makedirs('temp/saved_model')
-            torch.save(model.state_dict(), MODEL_SAVE_PATH + '.pth')
-            torch.save(model, MODEL_SAVE_PATH + '_net.pth')
+            torch.save(model, MODEL_SAVE_PATH + '.pth')
             
             print('Saved model in .pth format at the end of training')
-
-            dummy_input = torch.randn(1, 1, INPUT_SIZE).to(device)
-            log_dir = './onnx_log'
-            os.makedirs(log_dir, exist_ok=True)
-            with open(os.path.join(log_dir, 'onnx_export.log'), 'w') as f:
-                with contextlib.redirect_stdout(f), contextlib.redirect_stderr(f):
-                    torch.onnx.export(model, dummy_input, MODEL_SAVE_PATH + '.onnx', verbose=False)
-            print('Saved model in .onnx format')
 
             output_dir = './temp/records/'
             os.makedirs(output_dir, exist_ok=True)

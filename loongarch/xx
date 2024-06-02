@@ -1,0 +1,24 @@
+import torch
+
+# 假设你有一个定义好的模型类 MyModel
+# class MyModel(torch.nn.Module):
+#     def __init__(self):
+#         super(MyModel, self).__init__()
+#         # 定义网络层
+
+# 创建模型实例
+model = MyModel()
+
+# 指定设备（例如：'cpu' 或 'cuda:0'）
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+# 加载保存的模型权重
+model.load_state_dict(torch.load('temp/saved_model/saved.pth', map_location=device))
+
+# 将模型转换到指定设备
+model.to(device)
+
+# 如果你有需要进一步操作，比如模型推理或训练，可以继续进行
+# model.eval()  # 设定模型为评估模式
+# with torch.no_grad():
+#     # 推理代码
