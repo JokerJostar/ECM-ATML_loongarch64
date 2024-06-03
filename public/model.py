@@ -21,23 +21,64 @@ class ResNet18Custom(nn.Module):
         return self.resnet18(x)
     
 
-class ShuffleNetV2Custom(nn.Module):
-    def __init__(self, num_classes=2):
-        super(ShuffleNetV2Custom, self).__init__()
-        # Load the pretrained ShuffleNetV2 model
-        self.shufflenet_v2 = models.shufflenet_v2_x1_0(pretrained=True)
-        
-        # Modify the first convolutional layer to accept (1, 1, 1250) input
-        self.shufflenet_v2.conv1[0] = nn.Conv2d(1, 24, kernel_size=(1, 7), stride=(1, 2), padding=(0, 3), bias=False)
-        
-        # Modify the maxpool layer to handle (1, W) input
-        self.shufflenet_v2.maxpool = nn.Identity()  # Remove maxpool layer
-        
-        # Adjust the fully connected layer for the desired number of output classes
-        self.shufflenet_v2.fc = nn.Linear(self.shufflenet_v2.fc.in_features, num_classes)
+class BasicBlock1d(nn.Module):
+    def __init__(self, in_channels, out_channels, stride=1):
+        super(BasicBlock1d, self).__init__()
+        self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm1d(out_channels)
+        self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm1d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.stride = stride
+
+        if stride != 1 or in_channels != out_channels:
+            self.shortcut = nn.Sequential(
+                nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm1d(out_channels)
+            )
+        else:
+            self.shortcut = nn.Identity()
 
     def forward(self, x):
-        return self.shufflenet_v2(x)
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        out += self.shortcut(x)
+        out = self.relu(out)
+        return out
+
+class ShuffleNetV2Custom1d(nn.Module):
+    def __init__(self, num_classes=2):
+        super(ShuffleNetV2Custom1d, self).__init__()
+        self.conv1 = nn.Conv1d(1, 24, kernel_size=7, stride=2, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm1d(24)
+        self.relu = nn.ReLU(inplace=True)
+        
+        # 使用 BasicBlock1d 进行网络构建
+        self.layer1 = self._make_layer(24, 48, 4, stride=2)
+        self.layer2 = self._make_layer(48, 96, 4, stride=2)
+        self.layer3 = self._make_layer(96, 192, 4, stride=2)
+        self.layer4 = self._make_layer(192, 384, 4, stride=2)
+        
+        self.global_pool = nn.AdaptiveAvgPool1d(1)
+        self.fc = nn.Linear(384, num_classes)
+
+    def _make_layer(self, in_channels, out_channels, blocks, stride):
+        layers = []
+        layers.append(BasicBlock1d(in_channels, out_channels, stride))
+        for _ in range(1, blocks):
+            layers.append(BasicBlock1d(out_channels, out_channels))
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
+        out = self.global_pool(out)
+        out = out.view(out.size(0), -1)
+        out = self.fc(out)
+        return out
 
 
 # 计算卷积输出大小的辅助函数

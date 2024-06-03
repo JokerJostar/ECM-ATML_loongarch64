@@ -18,7 +18,7 @@ from public.model import CNNModel
 
 
 # 加载模型
-model = torch.load("98-94/saved.pth", map_location=torch.device('cpu'))
+model = torch.load("temp/saved_model/saved.pth", map_location=torch.device('cpu'))
 model.eval() 
 
 input_example = torch.randn(1,1,1,1250)  # 例子输入
