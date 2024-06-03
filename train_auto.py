@@ -93,7 +93,8 @@ def main():
 
     while True:
         learning_rate = next(lr_gen, None)
-        if learning_rate is None:
+        if learning_rate > LR_MAX:
+            print("Training finished")
             break
 
         try:
