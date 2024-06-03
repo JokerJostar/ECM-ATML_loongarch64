@@ -3,7 +3,7 @@ import torch.nn as nn
 import torchvision.models as models
 
 class ResNet18Custom(nn.Module):
-    def __init__(self, num_classes=1000):
+    def __init__(self, num_classes=2):
         super(ResNet18Custom, self).__init__()
         # Load the pretrained ResNet18 model
         self.resnet18 = models.resnet18(pretrained=True)

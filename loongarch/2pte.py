@@ -13,12 +13,12 @@ parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
 
 # 现在你可以导入file2.py中的类
-from public.model import CNNModel
+from public.model import ShuffleNetV2Custom1d
 
 
 
 # 加载模型
-model = torch.load("temp/saved_model/saved.pth", map_location=torch.device('cpu'))
+model = torch.load("97-96/saved.pth", map_location=torch.device('cpu'))
 model.eval() 
 
 input_example = torch.randn(1,1,1250)  # 例子输入

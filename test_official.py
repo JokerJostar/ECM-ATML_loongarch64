@@ -128,6 +128,8 @@ if __name__ == '__main__':
         for data, labels in tqdm(dataloader, desc="Evaluating"):  # 加入进度条
             data = data.to(device)  # Ensure the input data is on the same device as the model
             outputs = model(data)  # Now you can pass the data to the model
+            print("Output Tensor:", outputs)
+            print("Output Shape:", outputs.shape)
             _, preds = torch.max(outputs, 1)
             all_labels.extend(labels.numpy())
             all_preds.extend(preds.cpu().numpy())  # 确保从GPU传输到CPU

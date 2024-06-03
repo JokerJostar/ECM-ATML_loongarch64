@@ -127,7 +127,7 @@ def main():
                                     prefetch_factor=PREFETCH_FACTOR, persistent_workers=True)
 
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            model = Net(INPUT_SIZE).to(device)
+            model = Net(num_classes=2).to(device)
             criterion = nn.CrossEntropyLoss()
             optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.5)
