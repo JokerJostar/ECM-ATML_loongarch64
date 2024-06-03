@@ -1,0 +1,68 @@
+import torch
+import torch.quantization
+import torch.nn as nn
+from torch.utils.data import DataLoader
+import sys
+import os
+from tqdm import tqdm  # 导入 tqdm 库
+
+# 获取当前目录和父目录路径
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+
+# 将父目录添加到系统路径
+sys.path.append(parent_dir)
+
+# 从父目录导入模型定义
+from public.model import ShuffleNetV2Custom1d
+from public.dataset import ECGDataset
+
+# 设置参数
+data_dir = 'test_data/'  # 测试数据目录
+batch_size = 32  # 批处理大小
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+num_workers = 4
+prefetch_factor = 2  # 可以根据实际情况调整
+persistent_workers = True  # 如果你的PyTorch版本支持，可以开启
+dataset = ECGDataset(data_dir)
+dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers,
+                        prefetch_factor=prefetch_factor, persistent_workers=persistent_workers)
+
+# 加载模型
+model = torch.load('temp/saved_model/saved.pth', map_location=device)
+model = model.to(device)  # 将模型移动到与输入数据相同的设备
+
+# 定义自定义的 qconfig
+custom_qconfig = torch.quantization.QConfig(
+    activation=torch.quantization.MinMaxObserver.with_args(dtype=torch.qint8, qscheme=torch.per_tensor_affine),
+    weight=torch.quantization.PerChannelMinMaxObserver.with_args(dtype=torch.qint8, qscheme=torch.per_channel_symmetric)
+)
+
+# 设置量化配置
+model.qconfig = custom_qconfig
+
+# 准备量化
+torch.quantization.prepare(model, inplace=True)
+
+# 校准模型
+# 用一些校准数据运行模型，以便收集统计数据
+model.eval()  # 设置为评估模式
+with torch.no_grad():
+    for data, _ in tqdm(dataloader, desc="校准模型进度"):
+        data = data.to(device)
+        model(data)
+
+# 转换量化模型
+torch.quantization.convert(model, inplace=True)
+
+# 现在模型已经量化，可以进行推理
+# 例如，使用一个新的输入进行推理
+test_input = torch.randn(1, 1, 1250).to(device)
+model.eval()
+with torch.no_grad():
+    output = model(test_input)
+print(output)
+
+# 保存量化后的模型
+torch.save(model, 'quantized_model.pth')
