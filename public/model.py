@@ -19,6 +19,25 @@ class ResNet18Custom(nn.Module):
 
     def forward(self, x):
         return self.resnet18(x)
+    
+
+class ShuffleNetV2Custom(nn.Module):
+    def __init__(self, num_classes=1000):
+        super(ShuffleNetV2Custom, self).__init__()
+        # Load the pretrained ShuffleNetV2 model
+        self.shufflenet_v2 = models.shufflenet_v2_x1_0(pretrained=True)
+        
+        # Modify the first convolutional layer to accept (1, 1, 1250) input
+        self.shufflenet_v2.conv1[0] = nn.Conv2d(1, 24, kernel_size=(1, 7), stride=(1, 2), padding=(0, 3), bias=False)
+        
+        # Modify the maxpool layer to handle (1, W) input
+        self.shufflenet_v2.maxpool = nn.Identity()  # Remove maxpool layer
+        
+        # Adjust the fully connected layer for the desired number of output classes
+        self.shufflenet_v2.fc = nn.Linear(self.shufflenet_v2.fc.in_features, num_classes)
+
+    def forward(self, x):
+        return self.shufflenet_v2(x)
 
 
 # 计算卷积输出大小的辅助函数
