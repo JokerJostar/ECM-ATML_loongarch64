@@ -13,10 +13,11 @@ from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_sc
 from sklearn.model_selection import train_test_split
 from tqdm.auto import tqdm as tqdmauto
 
-from public.model import CNNModel
+from public.model import CNNModel, ResNet18Custom as Net
 from public.dataset import ECGDataset
 from public.test import test_model
 import math
+from efficientnet_pytorch import EfficientNet as EffNet
 
 from params import (
     AVOID_FILE_PATH,
@@ -116,18 +117,18 @@ def main():
             print(f'patience_counter: {patience_counter}/{PATIENCE_COUNTER_MAX}')
 
             dataset = ECGDataset(DATA_DIR)
-            indices = list(range(50000))
+            indices = list(range(len(dataset)))
             train_indices, val_indices = train_test_split(indices, test_size=0.2, random_state=42)
             train_subset = Subset(dataset, train_indices)
             val_subset = Subset(dataset, val_indices)
 
             train_loader = DataLoader(train_subset, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS,
-                                      prefetch_factor=PREFETCH_FACTOR, persistent_workers=True)
+                                    prefetch_factor=PREFETCH_FACTOR, persistent_workers=True)
             val_loader = DataLoader(val_subset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS,
                                     prefetch_factor=PREFETCH_FACTOR, persistent_workers=True)
 
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            model = CNNModel(INPUT_SIZE).to(device)
+            model = Net(INPUT_SIZE).to(device)
             criterion = nn.CrossEntropyLoss()
             optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.5)

@@ -21,7 +21,7 @@ from public.model import CNNModel
 model = torch.load("temp/saved_model/saved.pth", map_location=torch.device('cpu'))
 model.eval() 
 
-input_example = torch.randn(1,1,1250)  # 例子输入
+input_example = torch.randn(1,1,1,1250)  # 例子输入
 
 # 步骤2：导出PyTorch模型为ExecuTorch格式
 aten_dialect = export(model, (input_example,))

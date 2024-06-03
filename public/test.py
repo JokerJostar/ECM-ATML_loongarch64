@@ -7,6 +7,7 @@ from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_sc
 
 from tqdm.auto import tqdm as tqdmauto
 from public.dataset import ECGDataset
+from efficientnet_pytorch import EfficientNet as EffNet
 
 
 from params import (
@@ -56,7 +57,11 @@ def test_model(model):
     num_workers = NUM_WORKERS
     prefetch_factor = PREFETCH_FACTOR  # 可以根据实际情况调整
     persistent_workers = True  # 如果你的PyTorch版本支持，可以开启
+
+    # 创建数据集实例
     dataset = ECGDataset(data_dir)
+
+    # 创建数据加载器
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers,
                             prefetch_factor=prefetch_factor, persistent_workers=persistent_workers)
 

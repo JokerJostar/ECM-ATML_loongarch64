@@ -1,10 +1,31 @@
 import torch
 import torch.nn as nn
+import torchvision.models as models
+
+class ResNet18Custom(nn.Module):
+    def __init__(self, num_classes=1000):
+        super(ResNet18Custom, self).__init__()
+        # Load the pretrained ResNet18 model
+        self.resnet18 = models.resnet18(pretrained=True)
+        
+        # Modify the first convolutional layer to accept (1, 1, 1250) input
+        self.resnet18.conv1 = nn.Conv2d(1, 64, kernel_size=(1, 7), stride=(1, 2), padding=(0, 3), bias=False)
+        
+        # Modify the maxpool layer to handle (1, W) input
+        self.resnet18.maxpool = nn.Identity()  # Remove maxpool layer
+        
+        # Adjust the fully connected layer for the desired number of output classes
+        self.resnet18.fc = nn.Linear(self.resnet18.fc.in_features, num_classes)
+
+    def forward(self, x):
+        return self.resnet18(x)
 
 
 # 计算卷积输出大小的辅助函数
 def calculate_conv_output_size(input_size, kernel_size, padding, stride):
     return (input_size - kernel_size + 2 * padding) // stride + 1
+
+
 
 
 # 定义CNN模型
