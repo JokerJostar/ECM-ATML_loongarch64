@@ -22,7 +22,7 @@ class ResNet18Custom(nn.Module):
     
 
 class ShuffleNetV2Custom(nn.Module):
-    def __init__(self, num_classes=1000):
+    def __init__(self, num_classes=2):
         super(ShuffleNetV2Custom, self).__init__()
         # Load the pretrained ShuffleNetV2 model
         self.shufflenet_v2 = models.shufflenet_v2_x1_0(pretrained=True)
