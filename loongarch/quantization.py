@@ -30,7 +30,7 @@ dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_worke
                         prefetch_factor=prefetch_factor, persistent_workers=persistent_workers)
 
 # 加载模型
-model = torch.load('96-96/saved.pth', map_location=device)
+model = torch.load('97-96/saved.pth', map_location=device)
 model = model.to(device)  # 将模型移动到与输入数据相同的设备
 
 # 定义自定义的 qconfig
@@ -67,4 +67,4 @@ with torch.no_grad():
 print(output)
 
 # 保存量化后的模型
-torch.save(model, 'quantized_model.pth')
+torch.save(model.state_dict(), 'loongarch/quantized_model.pth')

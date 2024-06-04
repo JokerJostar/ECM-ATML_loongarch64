@@ -4,7 +4,8 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm  # 进度条库
 from public.dataset import ECGDataset  # 确保你有这个文件
-from public.model import CNNModel # 确保你有这个文件
+from public.model import CustomShuffleNetV2 as Net
+import torch.quantization
 from params import (
     AVOID_FILE_PATH,
     DATA_DIR,
@@ -115,7 +116,8 @@ if __name__ == '__main__':
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers,
                             prefetch_factor=prefetch_factor, persistent_workers=persistent_workers)
 
-    model = torch.load('temp/saved_model/saved.pth', map_location=device)
+    model = Net()
+    model.load_state_dict(torch.load('loongarch/quantized_model.pth'))
     model = model.to(device)  # Move the model to the same device as the input data
 
     model.eval()  # 设置为评估模式

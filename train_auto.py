@@ -186,7 +186,7 @@ def main():
 
             if not os.path.exists('temp/saved_model'):
                 os.makedirs('temp/saved_model')
-            torch.save(model, MODEL_SAVE_PATH + '.pth')
+            torch.save(model.state_dict(), MODEL_SAVE_PATH + '.pth')
             
             print('Saved model in .pth format at the end of training')
 
