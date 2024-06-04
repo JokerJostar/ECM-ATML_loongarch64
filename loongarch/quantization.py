@@ -14,7 +14,7 @@ parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
 
 # 从父目录导入模型定义
-from public.model import CustomShuffleNetV2
+from public.model import ShuffleNetV2 as Net
 from public.dataset import ECGDataset
 
 # 设置参数
@@ -30,8 +30,8 @@ dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_worke
                         prefetch_factor=prefetch_factor, persistent_workers=persistent_workers)
 
 # 加载模型
-model = torch.load('97-96/saved.pth', map_location=device)
-model = model.to(device)  # 将模型移动到与输入数据相同的设备
+model = Net()
+model.load_state_dict(torch.load('temp/saved_model/saved.pth', map_location=torch.device('cpu')))  
 
 # 定义自定义的 qconfig
 model.qconfig = quantization.QConfig(
@@ -47,11 +47,10 @@ torch.quantization.prepare(model, inplace=True)
 model.eval()  # 设置为评估模式
 with torch.no_grad():
     for data, _ in tqdm(dataloader, desc="校准模型进度"):
-        data = data.to(device)
+        data = data.to('cpu')  # 确保数据在 CPU 上
         model(data)
 
-
-model.to(device)
+model.to('cpu')  # 确保模型在 CPU 上
 
 # 转换量化模型
 torch.quantization.convert(model, inplace=True)
@@ -60,7 +59,7 @@ model.eval()
 
 # 现在模型已经量化，可以进行推理
 # 例如，使用一个新的输入进行推理
-test_input = torch.randn(1, 1, 1, 1250).to(device)
+test_input = torch.randn(1, 1, 1, 1250).to('cpu')
 model.eval()
 with torch.no_grad():
     output = model(test_input)

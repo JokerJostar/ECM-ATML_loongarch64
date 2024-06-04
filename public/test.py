@@ -7,6 +7,7 @@ from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_sc
 
 from tqdm.auto import tqdm as tqdmauto
 from public.dataset import ECGDataset
+from public.model import ShuffleNetV2 as Net
 
 
 from params import (
@@ -65,7 +66,8 @@ def test_model(model):
                             prefetch_factor=prefetch_factor, persistent_workers=persistent_workers)
 
     # 加载模型
-    model = torch.load('temp/saved_model/saved.pth', map_location=device)
+    model = Net()
+    model.load_state_dict= (torch.load('temp/saved_model/saved.pth', map_location=device))
     model = model.to(device)  # Move the model to the same device as the input data
 
     # 评估模型
