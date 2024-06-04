@@ -30,8 +30,7 @@ dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_worke
                         prefetch_factor=prefetch_factor, persistent_workers=persistent_workers)
 
 # 加载模型
-model = Net()
-model.load_state_dict(torch.load('temp/saved_model/saved.pth', map_location=torch.device('cpu')))  
+model=torch.load('temp/saved_model/saved.pth', map_location=torch.device('cpu'))
 
 # 定义自定义的 qconfig
 model.qconfig = quantization.QConfig(

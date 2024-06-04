@@ -13,7 +13,7 @@ from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_sc
 from sklearn.model_selection import train_test_split
 from tqdm.auto import tqdm as tqdmauto
 
-from public.model import CNNModel
+from public.model import ShuffleNetV2 as Net
 from public.dataset import ECGDataset
 from public.test import test_model
 import math
@@ -127,7 +127,7 @@ def main():
                                     prefetch_factor=PREFETCH_FACTOR, persistent_workers=True)
 
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            model = CNNModel(INPUT_SIZE).to(device)
+            model = Net().to(device)
             criterion = nn.CrossEntropyLoss()
             optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.5)
