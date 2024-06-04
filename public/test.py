@@ -7,7 +7,6 @@ from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_sc
 
 from tqdm.auto import tqdm as tqdmauto
 from public.dataset import ECGDataset
-from efficientnet_pytorch import EfficientNet as EffNet
 
 
 from params import (

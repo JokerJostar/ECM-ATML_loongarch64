@@ -1,5 +1,5 @@
 import torch
-import torch.quantization
+import torch.quantization as quantization
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import sys
@@ -34,13 +34,10 @@ model = torch.load('temp/saved_model/saved.pth', map_location=device)
 model = model.to(device)  # 将模型移动到与输入数据相同的设备
 
 # 定义自定义的 qconfig
-custom_qconfig = torch.quantization.QConfig(
-    activation=torch.quantization.MinMaxObserver.with_args(dtype=torch.qint8, qscheme=torch.per_tensor_affine),
-    weight=torch.quantization.PerChannelMinMaxObserver.with_args(dtype=torch.qint8, qscheme=torch.per_channel_symmetric)
+model.qconfig = quantization.QConfig(
+    activation=quantization.default_observer.with_args(quant_min=0, quant_max=127),
+    weight=quantization.default_weight_observer.with_args(quant_min=-128, quant_max=127)
 )
-
-# 设置量化配置
-model.qconfig = custom_qconfig
 
 # 准备量化
 torch.quantization.prepare(model, inplace=True)
@@ -52,6 +49,9 @@ with torch.no_grad():
     for data, _ in tqdm(dataloader, desc="校准模型进度"):
         data = data.to(device)
         model(data)
+
+
+model.to(device)
 
 # 转换量化模型
 torch.quantization.convert(model, inplace=True)

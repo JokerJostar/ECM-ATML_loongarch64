@@ -25,11 +25,11 @@ LR_MAX = 0.0100   # Maximum learning rate to try
 STEP = 0.0005   # Step size for incrementing the learning rate
 
 # The number of worker threads to use for loading data
-NUM_WORKERS = 56  # params on v100
+NUM_WORKERS = 8  # params on v100
 # NUM_WORKERS = 8 # params on pc
 
 # The number of batches that should be prefetched by each worker
-PREFETCH_FACTOR = 4   # params on v100
+PREFETCH_FACTOR = 2   # params on v100
 # PREFETCH_FACTOR = 2 # params on pc
 
 # Deciding when to write the current learning_rate to avoid.txt

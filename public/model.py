@@ -1,6 +1,22 @@
 import torch
 import torch.nn as nn
 import torchvision.models as models
+from torchvision.models import ShuffleNet_V2_X1_0_Weights
+
+class CustomShuffleNetV2(nn.Module):
+    def __init__(self, num_classes=2):
+        super(CustomShuffleNetV2, self).__init__()
+        # Load the pre-trained ShuffleNetV2 model
+        self.shufflenet = models.shufflenet_v2_x1_0(weights=ShuffleNet_V2_X1_0_Weights.DEFAULT)
+        
+        # Modify the first convolutional layer to accept input shape (1, 1, 1, 1250)
+        self.shufflenet.conv1[0] = nn.Conv2d(1, 24, kernel_size=(1, 3), stride=(1, 2), padding=(0, 1), bias=False)
+        
+        # Modify the final fully connected layer for binary classification
+        self.shufflenet.fc = nn.Linear(self.shufflenet.fc.in_features, num_classes)
+
+    def forward(self, x):
+        return self.shufflenet(x)
 
 class ResNet18Custom(nn.Module):
     def __init__(self, num_classes=2):

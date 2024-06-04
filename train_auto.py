@@ -13,7 +13,7 @@ from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_sc
 from sklearn.model_selection import train_test_split
 from tqdm.auto import tqdm as tqdmauto
 
-from public.model import ShuffleNetV2Custom1d as Net
+from public.model import CustomShuffleNetV2 as Net
 from public.dataset import ECGDataset
 from public.test import test_model
 import math
@@ -47,8 +47,18 @@ signal.signal(signal.SIGINT, signal_handler)
 def read_avoid_values(file_path):
     if not os.path.exists(file_path):
         return []
+    
+    avoid_values = []
     with open(file_path, 'r') as file:
-        return [float(line.strip()) for line in file.readlines()]
+        for line in file.readlines():
+            stripped_line = line.strip()
+            if stripped_line:  # 检查是否为空行
+                try:
+                    avoid_values.append(float(stripped_line))
+                except ValueError:
+                    print(f"Warning: Could not convert line to float: '{stripped_line}'")
+    
+    return avoid_values
 
 def write_avoid_value(file_path, value):
     with open(file_path, 'a') as file:
