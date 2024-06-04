@@ -7,7 +7,6 @@ from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_sc
 
 from tqdm.auto import tqdm as tqdmauto
 from public.dataset import ECGDataset
-from public.model import CNNModel as Net
 
 
 from params import (
@@ -57,18 +56,13 @@ def test_model(model):
     num_workers = NUM_WORKERS
     prefetch_factor = PREFETCH_FACTOR  # 可以根据实际情况调整
     persistent_workers = True  # 如果你的PyTorch版本支持，可以开启
-
-    # 创建数据集实例
     dataset = ECGDataset(data_dir)
-
-    # 创建数据加载器
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers,
                             prefetch_factor=prefetch_factor, persistent_workers=persistent_workers)
 
     # 加载模型
-    model = Net()
-    model.load_state_dict= (torch.load('temp/saved_model/saved.pth', map_location=device))
-    model = model.to(device)  # Move the model to the same device as the input data
+    model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
+    model.to(device)
 
     # 评估模型
     y_true, y_pred = evaluate(model, dataloader, device)
@@ -106,4 +100,3 @@ def test_model(model):
     print(f'Recall: {recall:.4f}')
 
     return max_metric_transformed, min_metric_transformed, f1, accuracy, precision, recall
-

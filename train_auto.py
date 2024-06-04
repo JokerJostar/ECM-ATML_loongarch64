@@ -13,7 +13,7 @@ from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_sc
 from sklearn.model_selection import train_test_split
 from tqdm.auto import tqdm as tqdmauto
 
-from public.model import CNNModel as Net
+from public.model import CNNModel
 from public.dataset import ECGDataset
 from public.test import test_model
 import math
@@ -33,8 +33,6 @@ from params import (
     AVOID_PARAM,
 )
 
-
-
 # The maximum number of times the patience counter can increment before stopping training
 PATIENCE_COUNTER_MAX = math.ceil((LR_MAX-LR_MIN)/STEP)
 
@@ -49,18 +47,8 @@ signal.signal(signal.SIGINT, signal_handler)
 def read_avoid_values(file_path):
     if not os.path.exists(file_path):
         return []
-    
-    avoid_values = []
     with open(file_path, 'r') as file:
-        for line in file.readlines():
-            stripped_line = line.strip()
-            if stripped_line:  # 检查是否为空行
-                try:
-                    avoid_values.append(float(stripped_line))
-                except ValueError:
-                    print(f"Warning: Could not convert line to float: '{stripped_line}'")
-    
-    return avoid_values
+        return [float(line.strip()) for line in file.readlines()]
 
 def write_avoid_value(file_path, value):
     with open(file_path, 'a') as file:
@@ -105,13 +93,9 @@ def main():
 
     while True:
         learning_rate = next(lr_gen, None)
-        if learning_rate is None:
-            print("No more learning rates available")
-            break
         if learning_rate > LR_MAX:
             print("Training finished")
             break
-        print(f"Current learning rate: {learning_rate}")
 
         try:
             for folder_name in os.listdir('.'):
@@ -132,18 +116,18 @@ def main():
             print(f'patience_counter: {patience_counter}/{PATIENCE_COUNTER_MAX}')
 
             dataset = ECGDataset(DATA_DIR)
-            indices = list(range(len(dataset)))
+            indices = list(range(50000))
             train_indices, val_indices = train_test_split(indices, test_size=0.2, random_state=42)
             train_subset = Subset(dataset, train_indices)
             val_subset = Subset(dataset, val_indices)
 
             train_loader = DataLoader(train_subset, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS,
-                                    prefetch_factor=PREFETCH_FACTOR, persistent_workers=True)
+                                      prefetch_factor=PREFETCH_FACTOR, persistent_workers=True)
             val_loader = DataLoader(val_subset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS,
                                     prefetch_factor=PREFETCH_FACTOR, persistent_workers=True)
 
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            model = Net().to(device)
+            model = CNNModel(INPUT_SIZE).to(device)
             criterion = nn.CrossEntropyLoss()
             optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.5)
@@ -192,7 +176,7 @@ def main():
 
             if not os.path.exists('temp/saved_model'):
                 os.makedirs('temp/saved_model')
-            torch.save(model.state_dict(), MODEL_SAVE_PATH + '.pth')
+            torch.save(model, MODEL_SAVE_PATH + '.pth')
             
             print('Saved model in .pth format at the end of training')
 
