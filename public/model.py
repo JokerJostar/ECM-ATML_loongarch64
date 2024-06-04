@@ -15,6 +15,8 @@ def calculate_conv_output_size(input_size, kernel_size, padding, stride):
 class CNNModel(nn.Module):
     def __init__(self, input_size = 1250):
         super(CNNModel, self).__init__()
+        self.quant = torch.ao.quantization.QuantStub()
+        self.dequant = torch.ao.quantization.DeQuantStub()
         self.conv1 = nn.Conv1d(1, 32, kernel_size=3, padding=1)
         self.conv2 = nn.Conv1d(32, 64, kernel_size=3, padding=1)
         self.conv3 = nn.Conv1d(64, 128, kernel_size=3, padding=1)
@@ -44,6 +46,7 @@ class CNNModel(nn.Module):
         self.fc4 = nn.Linear(128, 2)
 
     def forward(self, x):
+        x = self.quant(x)
         x = self.pool(torch.relu(self.conv1(x)))
         x = self.pool(torch.relu(self.conv2(x)))
         x = self.pool(torch.relu(self.conv3(x)))
@@ -58,6 +61,7 @@ class CNNModel(nn.Module):
         x = torch.relu(self.fc3(x))
         x = self.dropout(x)
         x = self.fc4(x)
+        x = self.dequant(x)
         return x
 
 
