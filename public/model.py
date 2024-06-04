@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 import torchvision.models as models
+import torch.ao.quantization
 from torchvision.models import ShuffleNet_V2_X1_0_Weights
+import torch.quantization
 
 class CustomShuffleNetV2(nn.Module):
     def __init__(self, num_classes=2):
@@ -15,8 +17,19 @@ class CustomShuffleNetV2(nn.Module):
         # Modify the final fully connected layer for binary classification
         self.shufflenet.fc = nn.Linear(self.shufflenet.fc.in_features, num_classes)
 
+        self.quant = torch.ao.quantization.QuantStub()
+        self.dequant = torch.ao.quantization.DeQuantStub()
+
     def forward(self, x):
-        return self.shufflenet(x)
+        # Apply quantization
+        x = self.quant(x)
+        
+        x = self.shufflenet(x)
+        
+        # Apply dequantization
+        x = self.dequant(x)
+        
+        return x
 
 class ResNet18Custom(nn.Module):
     def __init__(self, num_classes=2):

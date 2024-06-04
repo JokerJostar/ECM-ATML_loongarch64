@@ -14,7 +14,7 @@ parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
 
 # 从父目录导入模型定义
-from public.model import ShuffleNetV2Custom1d
+from public.model import CustomShuffleNetV2
 from public.dataset import ECGDataset
 
 # 设置参数
@@ -30,7 +30,7 @@ dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_worke
                         prefetch_factor=prefetch_factor, persistent_workers=persistent_workers)
 
 # 加载模型
-model = torch.load('temp/saved_model/saved.pth', map_location=device)
+model = torch.load('96-96/saved.pth', map_location=device)
 model = model.to(device)  # 将模型移动到与输入数据相同的设备
 
 # 定义自定义的 qconfig
@@ -56,9 +56,11 @@ model.to(device)
 # 转换量化模型
 torch.quantization.convert(model, inplace=True)
 
+model.eval()
+
 # 现在模型已经量化，可以进行推理
 # 例如，使用一个新的输入进行推理
-test_input = torch.randn(1, 1, 1250).to(device)
+test_input = torch.randn(1, 1, 1, 1250).to(device)
 model.eval()
 with torch.no_grad():
     output = model(test_input)
