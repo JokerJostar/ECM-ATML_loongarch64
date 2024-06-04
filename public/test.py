@@ -61,8 +61,9 @@ def test_model(model):
                             prefetch_factor=prefetch_factor, persistent_workers=persistent_workers)
 
     # 加载模型
-    model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
+    model = torch.load(model_path, map_location=torch.device(device))
     model.to(device)
+    model.eval()  # 设置为评估模式
 
     # 评估模型
     y_true, y_pred = evaluate(model, dataloader, device)
