@@ -33,6 +33,8 @@ from params import (
     AVOID_PARAM,
 )
 
+learning_rate=0.0010
+
 # The maximum number of times the patience counter can increment before stopping training
 PATIENCE_COUNTER_MAX = math.ceil((LR_MAX-LR_MIN)/STEP)
 
