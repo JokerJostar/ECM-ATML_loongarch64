@@ -75,7 +75,7 @@ def check_and_rename_folder(max_metric, min_metric, root_dir='.'):
         match = re.match(r'(\d+)-(\d+)', folder_name)
         if match:
             xx, yy = map(int, match.groups())
-            if 1 <= xx <= 101 and 1 <= yy <= 101 and min_metric > yy:
+            if 0 <= xx <= 100 and 0 <= yy <= 100 and min_metric > yy:
                 new_folder_name = f'{int(max_metric)}-{int(min_metric)}'
                 os.rename(os.path.join(root_dir, folder_name), os.path.join(root_dir, new_folder_name))
                 for file_name in os.listdir(os.path.join(root_dir, new_folder_name)):
