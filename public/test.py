@@ -7,7 +7,7 @@ from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_sc
 
 from tqdm.auto import tqdm as tqdmauto
 from public.dataset import ECGDataset
-from public.model import ShuffleNetV2 as Net
+from public.model import CNNModel as Net
 
 
 from params import (

@@ -4,7 +4,7 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm  # 进度条库
 from public.dataset import ECGDataset  # 确保你有这个文件
-from public.model import ShuffleNetV2 as Net
+from public.model import CNNModel as Net
 import torch.quantization
 from params import (
     AVOID_FILE_PATH,

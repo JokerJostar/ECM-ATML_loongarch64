@@ -14,7 +14,7 @@ parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
 
 # 从父目录导入模型定义
-from public.model import ShuffleNetV2 as Net
+from public.model import CNNModel as Net
 from public.dataset import ECGDataset
 
 # 设置参数
@@ -59,7 +59,7 @@ model.eval()
 
 # 现在模型已经量化，可以进行推理
 # 例如，使用一个新的输入进行推理
-test_input = torch.randn(1, 1, 1, 1250).to('cpu')
+test_input = torch.randn(1, 1, 1250).to('cpu')
 model.eval()
 with torch.no_grad():
     output = model(test_input)
