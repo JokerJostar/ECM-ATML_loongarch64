@@ -33,7 +33,7 @@ from params import (
     AVOID_PARAM,
 )
 
-learning_rate=0.0010
+
 
 # The maximum number of times the patience counter can increment before stopping training
 PATIENCE_COUNTER_MAX = math.ceil((LR_MAX-LR_MIN)/STEP)
@@ -105,9 +105,13 @@ def main():
 
     while True:
         learning_rate = next(lr_gen, None)
+        if learning_rate is None:
+            print("No more learning rates available")
+            break
         if learning_rate > LR_MAX:
             print("Training finished")
             break
+        print(f"Current learning rate: {learning_rate}")
 
         try:
             for folder_name in os.listdir('.'):
