@@ -5,6 +5,13 @@ from torch.utils.data import DataLoader
 import sys
 import os
 from tqdm import tqdm  # 导入 tqdm 库
+import torch
+import torch.nn as nn
+import sys
+import os
+from torch.export import export
+from executorch.exir import to_edge
+from torch.utils.data import Dataset, DataLoader
 
 # 获取当前目录和父目录路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -14,7 +21,7 @@ parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
 
 # 从父目录导入模型定义
-from public.model import CNNModel as Net
+from public.model import CNNModel
 from public.dataset import ECGDataset
 
 # 设置参数
@@ -33,10 +40,7 @@ dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_worke
 model=torch.load('temp/saved_model/saved.pth', map_location=torch.device('cpu'))
 
 # 定义自定义的 qconfig
-model.qconfig = quantization.QConfig(
-    activation=quantization.default_observer.with_args(quant_min=0, quant_max=127),
-    weight=quantization.default_weight_observer.with_args(quant_min=-128, quant_max=127)
-)
+model.qconfig = torch.quantization.get_default_qconfig('fbgemm')
 
 # 准备量化
 torch.quantization.prepare(model, inplace=True)
@@ -58,11 +62,18 @@ model.eval()
 
 # 现在模型已经量化，可以进行推理
 # 例如，使用一个新的输入进行推理
-test_input = torch.randn(1, 1, 1250).to('cpu')
-model.eval()
-with torch.no_grad():
-    output = model(test_input)
-print(output)
 
-# 保存量化后的模型
-torch.save(model.state_dict(), 'loongarch/quantized_model.pth')
+# 示例输入数据
+input_example = data
+
+# 步骤2：导出PyTorch模型为ExecuTorch格式
+aten_dialect = export(model, (input_example,))
+edge_program = to_edge(aten_dialect)
+executorch_program = edge_program.to_executorch()
+
+# 步骤3：保存导出的模型为.pte文件
+output_file = "loongarch/model.pte"
+with open(output_file, "wb") as f:
+    f.write(executorch_program.buffer)
+
+print(f"ExecuTorch模型已保存为: {output_file}")

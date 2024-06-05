@@ -147,6 +147,12 @@ class ShuffleNetV2(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        # 显式检查输入张量的形状
+        torch._check(x.size(0) == 4, "Batch size should be 4")
+        torch._check(x.size(1) == 1, "Channel size should be 1")
+        torch._check(x.size(2) == 1, "Height should be 1")
+        torch._check(x.size(3) == 1250, "Width should be 1250")
+
         x = self.quant(x)
         x = self.stage1(x)
         x = self.stage2(x)

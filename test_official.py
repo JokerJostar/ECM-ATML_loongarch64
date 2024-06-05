@@ -4,7 +4,7 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm  # 进度条库
 from public.dataset import ECGDataset  # 确保你有这个文件
-from public.model import CNNModel as Net
+from public.model import ShuffleNetV2 as Net
 import torch.quantization
 from params import (
     AVOID_FILE_PATH,
@@ -103,7 +103,6 @@ def stats_report(mylist):
 
     return output
 
-
 if __name__ == '__main__':
     data_dir = './test_data/'  # 测试数据目录
     batch_size = BATCH_SIZE  # 批处理大小
@@ -116,9 +115,12 @@ if __name__ == '__main__':
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers,
                             prefetch_factor=prefetch_factor, persistent_workers=persistent_workers)
 
-    model = Net()
+    modelf = Net()  # 确保你已经定义了 Net 类
+    modelf.qconfig = torch.quantization.get_default_qconfig('fbgemm')
+    modelp = torch.quantization.prepare(modelf)
+    model = torch.quantization.convert(modelp)
     model.load_state_dict(torch.load('loongarch/quantized_model.pth'))
-    model = model.to(device)  # Move the model to the same device as the input data
+    model.to(device)  # 确保模型在 GPU 上
 
     model.eval()  # 设置为评估模式
 
@@ -130,8 +132,6 @@ if __name__ == '__main__':
         for data, labels in tqdm(dataloader, desc="Evaluating"):  # 加入进度条
             data = data.to(device)  # Ensure the input data is on the same device as the model
             outputs = model(data)  # Now you can pass the data to the model
-            print("Output Tensor:", outputs)
-            print("Output Shape:", outputs.shape)
             _, preds = torch.max(outputs, 1)
             all_labels.extend(labels.numpy())
             all_preds.extend(preds.cpu().numpy())  # 确保从GPU传输到CPU
