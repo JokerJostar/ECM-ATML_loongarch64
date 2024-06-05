@@ -55,7 +55,7 @@ class CNNModel(nn.Module):
         x = self.pool(torch.relu(self.conv4(x)))
         x = self.pool(torch.relu(self.conv5(x)))
         x = self.pool(torch.relu(self.conv6(x)))
-        x = x.view(x.size(0), -1)
+        x = x.reshape(x.size(0), -1)
         x = torch.relu(self.fc1(x))
         x = self.dropout(x)
         x = torch.relu(self.fc2(x))
