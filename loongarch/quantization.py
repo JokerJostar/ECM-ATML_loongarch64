@@ -10,8 +10,8 @@ import torch.nn as nn
 import sys
 import os
 from torch.export import export
-from executorch.exir import to_edge
 from torch.utils.data import Dataset, DataLoader
+
 
 # 获取当前目录和父目录路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -23,18 +23,32 @@ sys.path.append(parent_dir)
 # 从父目录导入模型定义
 from public.model import CNNModel
 from public.dataset import ECGDataset
+from params import (
+    AVOID_FILE_PATH,
+    DATA_DIR,
+    MODEL_SAVE_PATH,
+    INPUT_SIZE,
+    NUM_EPOCHS,
+    BATCH_SIZE,
+    LR_MIN,
+    LR_MAX,
+    STEP,
+    NUM_WORKERS,
+    PREFETCH_FACTOR,
+    AVOID_PARAM,
+)
 
 # 设置参数
 data_dir = 'test_data/'  # 测试数据目录
-batch_size = 32  # 批处理大小
+batch_size = 4  # 批处理大小
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-num_workers = 4
+num_workers = 100
 prefetch_factor = 2  # 可以根据实际情况调整
 persistent_workers = True  # 如果你的PyTorch版本支持，可以开启
 dataset = ECGDataset(data_dir)
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers,
-                        prefetch_factor=prefetch_factor, persistent_workers=persistent_workers)
+                        prefetch_factor=prefetch_factor, persistent_workers=persistent_workers, drop_last=True)
 
 # 加载模型
 model=torch.load('temp/saved_model/saved.pth', map_location=torch.device('cpu'))
@@ -60,20 +74,14 @@ torch.quantization.convert(model, inplace=True)
 
 model.eval()
 
+# 将模型导出为 Script 模型
+scripted_model = torch.jit.script(model)
+
+# 保存 Script 模型
+scripted_model.save('loongarch/quantized_script_model.pt')
+
 # 现在模型已经量化，可以进行推理
 # 例如，使用一个新的输入进行推理
 
-# 示例输入数据
-input_example = data
-
-# 步骤2：导出PyTorch模型为ExecuTorch格式
-aten_dialect = export(model, (input_example,))
-edge_program = to_edge(aten_dialect)
-executorch_program = edge_program.to_executorch()
-
-# 步骤3：保存导出的模型为.pte文件
-output_file = "loongarch/model.pte"
-with open(output_file, "wb") as f:
-    f.write(executorch_program.buffer)
-
-print(f"ExecuTorch模型已保存为: {output_file}")
+#将模型以字典的形式保存
+torch.save(model.state_dict(), 'loongarch/quantized_model.pth')

@@ -31,7 +31,7 @@ model.eval()  # 设置为评估模式
 
 # 设置数据加载参数
 data_dir = './test_data/'  # 测试数据目录
-batch_size = 4  # 批处理大小
+batch_size = 100  # 批处理大小
 
 
 num_workers = 4
@@ -41,7 +41,7 @@ persistent_workers = True  # 如果你的PyTorch版本支持，可以开启
 # 加载数据集和数据加载器
 dataset = ECGDataset(data_dir)
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers,
-                        prefetch_factor=prefetch_factor, persistent_workers=persistent_workers)
+                        prefetch_factor=prefetch_factor, persistent_workers=persistent_workers, drop_last=True)
 
 # 使用 DataLoader 中的一个批次数据
 for data, labels in dataloader:
