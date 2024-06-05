@@ -5,6 +5,19 @@ import torch.ao.quantization
 from torchvision.models import ShuffleNet_V2_X1_0_Weights
 import torch.quantization
 import torch.nn.functional as F
+from params import (
+    AVOID_FILE_PATH,
+    DATA_DIR,
+    MODEL_SAVE_PATH,
+    INPUT_SIZE,
+    NUM_EPOCHS,
+    BATCH_SIZE,
+    LR_MIN,
+    LR_MAX,
+    STEP,
+    NUM_WORKERS,
+    PREFETCH_FACTOR,
+)
 
 # 计算卷积输出大小的辅助函数
 def calculate_conv_output_size(input_size, kernel_size, padding, stride):
@@ -148,7 +161,7 @@ class ShuffleNetV2(nn.Module):
 
     def forward(self, x):
         # 显式检查输入张量的形状
-        torch._check(x.size(0) == 4, "Batch size should be 4")
+        torch._check(x.size(0) == BATCH_SIZE, "Batch size should be BATCH_SIZE")
         torch._check(x.size(1) == 1, "Channel size should be 1")
         torch._check(x.size(2) == 1, "Height should be 1")
         torch._check(x.size(3) == 1250, "Width should be 1250")
