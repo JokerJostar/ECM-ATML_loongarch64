@@ -13,7 +13,7 @@ from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_sc
 from sklearn.model_selection import train_test_split
 from tqdm.auto import tqdm as tqdmauto
 
-from public.model import CNNModel as Net
+from public.model import CustomShuffleNetV2 as Net
 from public.dataset import ECGDataset
 from public.test import test_model
 import math
@@ -83,6 +83,20 @@ def check_and_rename_folder(max_metric, min_metric, root_dir='.'):
                         shutil.copy(f'temp/saved_model/{file_name}', os.path.join(root_dir, new_folder_name, file_name))
                     elif file_name.endswith('.txt'):
                         shutil.copy(f'temp/records/{file_name}', os.path.join(root_dir, new_folder_name, file_name))
+
+
+def save_model_as_onnx(model, model_save_path, dataloader):
+    # 确保模型处于评估模式
+    model.eval()
+    
+    # 从 DataLoader 中获取一个批次作为示例输入
+    inputs, _ = next(iter(dataloader))
+    dummy_input = inputs.to('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    # 导出模型为 ONNX 格式
+    onnx_save_path = model_save_path + '.onnx'
+    torch.onnx.export(model, dummy_input, onnx_save_path, opset_version=11, input_names=['input'], output_names=['output'])
+    print(f'Saved model in ONNX format at {onnx_save_path}')
 
 # Main training loop
 def main():
@@ -177,6 +191,7 @@ def main():
             if not os.path.exists('temp/saved_model'):
                 os.makedirs('temp/saved_model')
             torch.save(model, MODEL_SAVE_PATH + '.pth')
+            save_model_as_onnx(model, MODEL_SAVE_PATH, train_loader)
             
             print('Saved model in .pth format at the end of training')
 

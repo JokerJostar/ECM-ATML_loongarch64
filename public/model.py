@@ -172,17 +172,11 @@ class CustomShuffleNetV2(nn.Module):
         # Modify the final fully connected layer for binary classification
         self.shufflenet.fc = nn.Linear(self.shufflenet.fc.in_features, num_classes)
 
-        self.quant = torch.ao.quantization.QuantStub()
-        self.dequant = torch.ao.quantization.DeQuantStub()
-
     def forward(self, x):
-        # Apply quantization
-        x = self.quant(x)
         
         x = self.shufflenet(x)
         
-        # Apply dequantization
-        x = self.dequant(x)
+
         
         return x
 
