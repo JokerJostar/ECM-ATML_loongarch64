@@ -79,7 +79,9 @@ def check_and_rename_folder(max_metric, min_metric, root_dir='.'):
                 new_folder_name = f'{int(max_metric)}-{int(min_metric)}'
                 os.rename(os.path.join(root_dir, folder_name), os.path.join(root_dir, new_folder_name))
                 for file_name in os.listdir(os.path.join(root_dir, new_folder_name)):
-                    if file_name.endswith('.pth', '.onnx'):
+                    if file_name.endswith('.pth'):
+                        shutil.copy(f'temp/saved_model/{file_name}', os.path.join(root_dir, new_folder_name, file_name))
+                    elif file_name.endswith('.onnx'):
                         shutil.copy(f'temp/saved_model/{file_name}', os.path.join(root_dir, new_folder_name, file_name))
                     elif file_name.endswith('.txt'):
                         shutil.copy(f'temp/records/{file_name}', os.path.join(root_dir, new_folder_name, file_name))
