@@ -20,16 +20,16 @@ NUM_EPOCHS = 10
 BATCH_SIZE = 100
 
 # The minimum, maximum, and step size for generating learning rates
-LR_MIN = 0.0010  # Minimum learning rate to try
-LR_MAX = 0.0100   # Maximum learning rate to try
-STEP = 0.00005   # Step size for incrementing the learning rate
+LR_MIN = 0.00001  # Minimum learning rate to try
+LR_MAX = 0.0010   # Maximum learning rate to try
+STEP = 0.000005   # Step size for incrementing the learning rate
 
 # The number of worker threads to use for loading data
 NUM_WORKERS = 8  # params on v100
 # NUM_WORKERS = 8 # params on pc
 
 # The number of batches that should be prefetched by each worker
-PREFETCH_FACTOR = 2   # params on v100
+PREFETCH_FACTOR = 4   # params on v100
 # PREFETCH_FACTOR = 2 # params on pc
 
 # Deciding when to write the current learning_rate to avoid.txt

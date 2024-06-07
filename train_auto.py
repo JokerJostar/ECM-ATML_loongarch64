@@ -145,7 +145,7 @@ def main():
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             model = Net().to(device)
             criterion = nn.CrossEntropyLoss()
-            optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
+            optimizer = optim.AdamW(model.parameters(), lr=learning_rate,weight_decay=0.001)
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.5)
 
             best_val_loss = float('inf')
