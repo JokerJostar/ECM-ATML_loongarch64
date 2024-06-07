@@ -48,7 +48,7 @@ def evaluate(model, dataloader, device):
 
 def test_model(model):
     data_dir = './test_data/'  # 测试数据目录
-    batch_size = BATCH_SIZE  # 批处理大小
+    batch_size = 1000  # 批处理大小
     device = 'cuda' if torch.cuda.is_available() else 'cpu'  # 使用的设备，cpu或cuda
     model_path = 'temp/saved_model/saved.pth'  # 模型路径
     output_dir = './temp/records/'  # 输出记录的目录
