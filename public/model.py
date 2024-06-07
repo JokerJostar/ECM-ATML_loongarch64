@@ -19,6 +19,8 @@ from params import (
     PREFETCH_FACTOR,
 )
 
+
+
 # 计算卷积输出大小的辅助函数
 def calculate_conv_output_size(input_size, kernel_size, padding, stride):
     return (input_size - kernel_size + 2 * padding) // stride + 1
@@ -79,7 +81,7 @@ class ShuffleNetV2Block(nn.Module):
                 nn.Conv2d(in_channels // 2, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(mid_channels),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=stride, padding=1, groups=mid_channels, bias=False),
+                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=stride, padding=1, bias=False),
                 nn.BatchNorm2d(mid_channels),
                 nn.Conv2d(mid_channels, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(mid_channels),
@@ -90,14 +92,14 @@ class ShuffleNetV2Block(nn.Module):
                 nn.Conv2d(in_channels, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(mid_channels),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=stride, padding=1, groups=mid_channels, bias=False),
+                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=stride, padding=1, bias=False),
                 nn.BatchNorm2d(mid_channels),
                 nn.Conv2d(mid_channels, out_channels - in_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(out_channels - in_channels),
                 nn.ReLU(inplace=True)
             )
             self.branch_proj = nn.Sequential(
-                nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=stride, padding=1, groups=in_channels, bias=False),
+                nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=stride, padding=1, bias=False),
                 nn.BatchNorm2d(in_channels),
                 nn.Conv2d(in_channels, in_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(in_channels),
@@ -125,9 +127,6 @@ class ShuffleNetV2(nn.Module):
     def __init__(self, num_classes=2):
         super(ShuffleNetV2, self).__init__()
 
-        self.quant = torch.ao.quantization.QuantStub()
-        self.dequant = torch.ao.quantization.DeQuantStub()
-
         self.stage1 = nn.Sequential(
             nn.Conv2d(1, 24, kernel_size=3, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(24),
@@ -149,17 +148,13 @@ class ShuffleNetV2(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-
-        x = self.quant(x)
         x = self.stage1(x)
         x = self.stage2(x)
         x = self.stage3(x)
         x = self.stage4(x)
         x = F.adaptive_avg_pool2d(x, 1).view(x.size(0), -1)
         x = self.fc(x)
-        x = self.dequant(x)
         return x
-
 class CustomShuffleNetV2(nn.Module):
     def __init__(self, num_classes=2):
         super(CustomShuffleNetV2, self).__init__()
