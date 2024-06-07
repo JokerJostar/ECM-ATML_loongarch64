@@ -104,10 +104,11 @@ def save_model_as_onnx(model, model_save_path, dataloader):
 def main():
     patience_counter = 0
 
-    avoid_values = read_avoid_values(AVOID_FILE_PATH)
-    lr_gen = learning_rate_generator(LR_MIN, LR_MAX, STEP, avoid_values)
+
 
     while True:
+        avoid_values = read_avoid_values(AVOID_FILE_PATH)
+        lr_gen = learning_rate_generator(LR_MIN, LR_MAX, STEP, avoid_values)
         learning_rate = next(lr_gen, None)
         if learning_rate > LR_MAX:
             print("Training finished")

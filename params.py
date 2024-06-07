@@ -14,15 +14,15 @@ MODEL_SAVE_PATH = 'temp/saved_model/saved'
 INPUT_SIZE = 1250
 
 # The number of epochs for training the model
-NUM_EPOCHS = 10
+NUM_EPOCHS = 40
 
 # The size of the batches used in training and validation
 BATCH_SIZE = 100
 
 # The minimum, maximum, and step size for generating learning rates
-LR_MIN = 0.00001  # Minimum learning rate to try
-LR_MAX = 0.0010   # Maximum learning rate to try
-STEP = 0.000005   # Step size for incrementing the learning rate
+LR_MIN = 0.0001  # Minimum learning rate to try
+LR_MAX = 0.0050   # Maximum learning rate to try
+STEP = 0.00005   # Step size for incrementing the learning rate
 
 # The number of worker threads to use for loading data
 NUM_WORKERS = 8  # params on v100
