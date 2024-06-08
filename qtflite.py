@@ -9,15 +9,15 @@ loaded_model = tf.saved_model.load(saved_model_dir)
 
 # 定义代表性数据生成器函数
 def representative_data_gen():
-    for _ in range(200):  # 生成50个样本
+    for _ in range(50):  # 生成50个样本
         # 生成随机数据，这里假设输入是你模型的输入形状
         input_data = np.random.rand(batch_size, input_height, input_width, input_channels).astype(np.float32)
         yield [input_data]
 
 # 定义输入数据的形状
-batch_size = 100  # 批大小
-input_height = 1  # 输入高度
-input_width = 1250  # 输入宽度
+batch_size = 1  # 批大小
+input_height = 1250  # 输入高度
+input_width = 1  # 输入宽度
 input_channels = 1  # 输入通道数
 
 # 转换为 TFLite 模型

@@ -133,9 +133,9 @@ class ShuffleNetV2(nn.Module):
             nn.ReLU(inplace=True)
         )
 
-        self.stage2 = self._make_stage(24, 48, 4)
-        self.stage3 = self._make_stage(48, 96, 8)
-        self.stage4 = self._make_stage(96, 192, 4)
+        self.stage2 = self._make_stage(24, 48, 2)  # 从4个block减少到2个
+        self.stage3 = self._make_stage(48, 96, 4)  # 从8个block减少到4个
+        self.stage4 = self._make_stage(96, 192, 2) # 从4个block减少到2个
 
         self.fc = nn.Linear(192, num_classes)
 
@@ -155,6 +155,7 @@ class ShuffleNetV2(nn.Module):
         x = F.adaptive_avg_pool2d(x, 1).view(x.size(0), -1)
         x = self.fc(x)
         return x
+
 class CustomShuffleNetV2(nn.Module):
     def __init__(self, num_classes=2):
         super(CustomShuffleNetV2, self).__init__()
