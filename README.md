@@ -42,7 +42,6 @@ ECM
 
 ### blocknet
 
-ShuffleNet
 本针对龙芯平台设计了两个版本的net
 
 1. 保留了channel shuffle和block结构的shufflenet
