@@ -78,30 +78,24 @@ class ShuffleNetV2Block(nn.Module):
 
         if self.stride == 1:
             self.branch_main = nn.Sequential(
-                nn.Conv2d(in_channels // 2, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
+                nn.Conv2d(in_channels // 2, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
                 nn.BatchNorm2d(mid_channels),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=stride, padding=1, bias=False),
-                nn.BatchNorm2d(mid_channels),
-                nn.Conv2d(mid_channels, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
+                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
                 nn.BatchNorm2d(mid_channels),
                 nn.ReLU(inplace=True)
             )
         else:
             self.branch_main = nn.Sequential(
-                nn.Conv2d(in_channels, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
+                nn.Conv2d(in_channels, mid_channels, kernel_size=3, stride=stride, padding=1, bias=False),
                 nn.BatchNorm2d(mid_channels),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=stride, padding=1, bias=False),
+                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
                 nn.BatchNorm2d(mid_channels),
-                nn.Conv2d(mid_channels, out_channels - in_channels, kernel_size=1, stride=1, padding=0, bias=False),
-                nn.BatchNorm2d(out_channels - in_channels),
                 nn.ReLU(inplace=True)
             )
             self.branch_proj = nn.Sequential(
                 nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=stride, padding=1, bias=False),
-                nn.BatchNorm2d(in_channels),
-                nn.Conv2d(in_channels, in_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(in_channels),
                 nn.ReLU(inplace=True)
             )
@@ -128,16 +122,15 @@ class ShuffleNetV2(nn.Module):
         super(ShuffleNetV2, self).__init__()
 
         self.stage1 = nn.Sequential(
-            nn.Conv2d(1, 8, kernel_size=(3, 1), stride=(2, 1), padding=(1, 0), bias=False),
-            nn.BatchNorm2d(8),
+            nn.Conv2d(1, 4, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(4),
             nn.ReLU(inplace=True)
         )
 
-        self.stage2 = self._make_stage(8, 16, 1)   # 从1个block减少到1个
-        self.stage3 = self._make_stage(16, 32, 1)  # 从2个block减少到1个
-        self.stage4 = self._make_stage(32, 64, 1)  # 从1个block减少到1个
+        self.stage2 = self._make_stage(4, 8, 1)   # 从1个block减少到1个
+        self.stage3 = self._make_stage(8, 16, 1)  # 从1个block减少到1个
 
-        self.fc = nn.Linear(64, num_classes)
+        self.fc = nn.Linear(16, num_classes)
 
     def _make_stage(self, in_channels, out_channels, num_blocks):
         layers = []
@@ -151,7 +144,6 @@ class ShuffleNetV2(nn.Module):
         x = self.stage1(x)
         x = self.stage2(x)
         x = self.stage3(x)
-        x = self.stage4(x)
         x = F.adaptive_avg_pool2d(x, 1).view(x.size(0), -1)
         x = self.fc(x)
         return x
