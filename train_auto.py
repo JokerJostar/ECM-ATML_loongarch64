@@ -142,6 +142,8 @@ def main():
 
             train_loader = DataLoader(train_subset, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS,
                                       prefetch_factor=PREFETCH_FACTOR, persistent_workers=True)
+            onnx_loader = DataLoader(train_subset, batch_size=1, shuffle=True, num_workers=NUM_WORKERS,
+                                      prefetch_factor=PREFETCH_FACTOR, persistent_workers=True)
             val_loader = DataLoader(val_subset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS,
                                     prefetch_factor=PREFETCH_FACTOR, persistent_workers=True)
 
@@ -196,7 +198,7 @@ def main():
             if not os.path.exists('temp/saved_model'):
                 os.makedirs('temp/saved_model')
             torch.save(model, MODEL_SAVE_PATH + '.pth')
-            save_model_as_onnx(model, MODEL_SAVE_PATH, train_loader)
+            save_model_as_onnx(model, MODEL_SAVE_PATH, onnx_loader)
             
             print('Saved model in .pth format at the end of training')
 
