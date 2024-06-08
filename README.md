@@ -47,7 +47,7 @@ ShuffleNet
 
 1. 保留了channel shuffle和block结构的shufflenet
 
-2. 去除了channel shuffle但保留了block结构的blocknet
+2. 去除了channel shuffle但保留了block结构的blocknet(model.py里的类名是shufflenev2)
 
 结果是channel shuffle在低算力平台对精度几乎没有影响
 
