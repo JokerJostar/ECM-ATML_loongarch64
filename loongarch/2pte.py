@@ -15,16 +15,13 @@ sys.path.append(parent_dir)
 
 # 现在你可以导入file2.py中的类
 from public.dataset import ECGDataset
-from public.model import ShuffleNetV2 as Net
+from public.model import OptimizedAFNet as Net
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # 加载模型
-modelf = Net()  # 确保你已经定义了 Net 类
-modelf.qconfig = torch.quantization.get_default_qconfig('fbgemm')
-modelp = torch.quantization.prepare(modelf)
-model = torch.quantization.convert(modelp)
-model.load_state_dict(torch.load('loongarch/quantized_model.pth'))
+model = Net()  # 确保你已经定义了 Net 类
+model.load_state_dict=(torch.load('temp/saved_model/saved.pth', map_location='cpu'))
 model.to(device)  # 确保模型在 GPU 上
 
 model.eval()  # 设置为评估模式
