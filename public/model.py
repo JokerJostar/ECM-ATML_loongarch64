@@ -128,7 +128,7 @@ class ShuffleNetV2(nn.Module):
         super(ShuffleNetV2, self).__init__()
 
         self.stage1 = nn.Sequential(
-            nn.Conv2d(1, 24, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.Conv2d(1, 24, kernel_size=(3, 1), stride=(2, 1), padding=(1, 0), bias=False),
             nn.BatchNorm2d(24),
             nn.ReLU(inplace=True)
         )

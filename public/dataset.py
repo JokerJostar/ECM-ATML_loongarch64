@@ -24,6 +24,13 @@ class ECGDataset(Dataset):
     def __getitem__(self, idx):
         file_path = os.path.join(self.data_dir, self.files[idx])
         data = np.loadtxt(file_path)  # 每行一个数据点
-        data = torch.tensor(data, dtype=torch.float32).unsqueeze(0).unsqueeze(0)  # 增加通道维度
+
+        # Ensure the data has exactly 1250 data points
+        if len(data) != 1250:
+            raise ValueError(f"Data in {file_path} does not have 1250 data points")
+
+        # Adjust data dimensions to (1, 1250, 1)
+        data = torch.tensor(data, dtype=torch.float32).unsqueeze(0).unsqueeze(2)  # 增加通道维度
+
         label = torch.tensor(self.labels[idx], dtype=torch.long)
         return data, label
