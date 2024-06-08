@@ -69,34 +69,32 @@ class CNNModel(nn.Module):
         return x
 
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
 class ShuffleNetV2Block(nn.Module):
     def __init__(self, in_channels, out_channels, stride):
         super(ShuffleNetV2Block, self).__init__()
         self.stride = stride
-
         mid_channels = out_channels // 2
 
         if self.stride == 1:
             self.branch_main = nn.Sequential(
-                nn.Conv2d(in_channels // 2, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.Conv2d(in_channels // 2, mid_channels, kernel_size=3, stride=1, padding=1, groups=in_channels // 2, bias=False),
                 nn.BatchNorm2d(mid_channels),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.Conv2d(mid_channels, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(mid_channels),
                 nn.ReLU(inplace=True)
             )
         else:
             self.branch_main = nn.Sequential(
-                nn.Conv2d(in_channels, mid_channels, kernel_size=3, stride=stride, padding=1, bias=False),
+                nn.Conv2d(in_channels, mid_channels, kernel_size=3, stride=stride, padding=1, groups=in_channels, bias=False),
                 nn.BatchNorm2d(mid_channels),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
-                nn.BatchNorm2d(mid_channels),
-                nn.ReLU(inplace=True)
-            )
-            self.branch_proj = nn.Sequential(
-                nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=stride, padding=1, bias=False),
-                nn.BatchNorm2d(in_channels),
+                nn.Conv2d(mid_channels, out_channels - in_channels, kernel_size=1, stride=1, padding=0, bias=False),
+                nn.BatchNorm2d(out_channels - in_channels),
                 nn.ReLU(inplace=True)
             )
 
@@ -105,16 +103,17 @@ class ShuffleNetV2Block(nn.Module):
             x1, x2 = torch.chunk(x, 2, dim=1)
             out = torch.cat((x1, self.branch_main(x2)), dim=1)
         else:
-            out = torch.cat((self.branch_proj(x), self.branch_main(x)), dim=1)
+            out = torch.cat((x, self.branch_main(x)), dim=1)
 
         out = self.channel_shuffle(out)
         return out
 
     def channel_shuffle(self, x):
         batch_size, num_channels, height, width = x.size()
-        x = x.view(batch_size, 2, num_channels // 2, height, width)
-        x = torch.transpose(x, 1, 2).contiguous()
-        x = x.view(batch_size, -1, height, width)
+        channels_per_group = num_channels // 2
+        x = x.view(batch_size, 2, channels_per_group, height, width)
+        x = x.permute(0, 2, 1, 3, 4).contiguous()
+        x = x.view(batch_size, num_channels, height, width)
         return x
 
 class ShuffleNetV2(nn.Module):
@@ -122,15 +121,17 @@ class ShuffleNetV2(nn.Module):
         super(ShuffleNetV2, self).__init__()
 
         self.stage1 = nn.Sequential(
-            nn.Conv2d(1, 4, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(4),
-            nn.ReLU(inplace=True)
+            nn.Conv2d(1, 8, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(8),
+            nn.ReLU(inplace=True),
+            self._make_stage(8, 16, 1),  # 从1个block减少到1个
+        )
+        
+        self.stage2 = nn.Sequential(
+            self._make_stage(16, 32, 1),  # 从1个block减少到1个
         )
 
-        self.stage2 = self._make_stage(4, 8, 1)   # 从1个block减少到1个
-        self.stage3 = self._make_stage(8, 16, 1)  # 从1个block减少到1个
-
-        self.fc = nn.Linear(16, num_classes)
+        self.fc = nn.Linear(32, num_classes)
 
     def _make_stage(self, in_channels, out_channels, num_blocks):
         layers = []
@@ -143,10 +144,10 @@ class ShuffleNetV2(nn.Module):
     def forward(self, x):
         x = self.stage1(x)
         x = self.stage2(x)
-        x = self.stage3(x)
-        x = F.adaptive_avg_pool2d(x, 1).view(x.size(0), -1)
+        x = x.view(x.size(0), -1)
         x = self.fc(x)
         return x
+
 
 class CustomShuffleNetV2(nn.Module):
     def __init__(self, num_classes=2):
