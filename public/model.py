@@ -100,15 +100,7 @@ class ShuffleNetV2Block(nn.Module):
         else:
             out = torch.cat((self.branch_proj(x), self.branch_main(x)), dim=1)
 
-        out = self.channel_shuffle(out)
         return out
-
-    def channel_shuffle(self, x):
-        batch_size, num_channels, height, width = x.size()
-        x = x.view(batch_size, 2, num_channels // 2, height, width)
-        x = torch.transpose(x, 1, 2).contiguous()
-        x = x.view(batch_size, -1, height, width)
-        return x
 
 class ShuffleNetV2(nn.Module):
     def __init__(self, num_classes=2):
