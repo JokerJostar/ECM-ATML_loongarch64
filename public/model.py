@@ -64,15 +64,12 @@ class LinearBinaryClassifier(nn.Module):
 
 
 class DepthwiseConv2d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False):
+    def __init__(self, in_channels, kernel_size=3, stride=1, padding=1, bias=False):
         super(DepthwiseConv2d, self).__init__()
         self.depthwise = nn.Conv2d(in_channels, in_channels, kernel_size=kernel_size, stride=stride, padding=padding, groups=in_channels, bias=bias)
-        self.pointwise = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=bias)
 
     def forward(self, x):
-        out = self.depthwise(x)
-        out = self.pointwise(out)
-        return out
+        return self.depthwise(x)
 
 class ShuffleNetV2Block(nn.Module):
     def __init__(self, in_channels, out_channels, stride):
@@ -83,24 +80,24 @@ class ShuffleNetV2Block(nn.Module):
 
         if self.stride == 1:
             self.branch_main = nn.Sequential(
-                DepthwiseConv2d(in_channels // 2, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
-                nn.BatchNorm2d(mid_channels),
+                DepthwiseConv2d(in_channels // 2, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.BatchNorm2d(in_channels // 2),
                 nn.ReLU(inplace=True),
-                DepthwiseConv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
-                nn.BatchNorm2d(mid_channels),
+                DepthwiseConv2d(in_channels // 2, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.BatchNorm2d(in_channels // 2),
                 nn.ReLU(inplace=True)
             )
         else:
             self.branch_main = nn.Sequential(
-                DepthwiseConv2d(in_channels, mid_channels, kernel_size=3, stride=stride, padding=1, bias=False),
-                nn.BatchNorm2d(mid_channels),
+                DepthwiseConv2d(in_channels, kernel_size=3, stride=stride, padding=1, bias=False),
+                nn.BatchNorm2d(in_channels),
                 nn.ReLU(inplace=True),
-                DepthwiseConv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
-                nn.BatchNorm2d(mid_channels),
+                DepthwiseConv2d(in_channels, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.BatchNorm2d(in_channels),
                 nn.ReLU(inplace=True)
             )
             self.branch_proj = nn.Sequential(
-                DepthwiseConv2d(in_channels, in_channels, kernel_size=3, stride=stride, padding=1, bias=False),
+                DepthwiseConv2d(in_channels, kernel_size=3, stride=stride, padding=1, bias=False),
                 nn.BatchNorm2d(in_channels),
                 nn.ReLU(inplace=True)
             )
@@ -124,8 +121,8 @@ class ShuffleNetV2(nn.Module):
             nn.ReLU(inplace=True)
         )
 
-        self.stage2 = self._make_stage(4, 8, 4)  # 增加block数量
-        self.stage3 = self._make_stage(8, 16, 2) # 增加block数量
+        self.stage2 = self._make_stage(4, 8, 4)
+        self.stage3 = self._make_stage(8, 16, 2)
 
         self.fc = nn.Linear(16, num_classes)
 
