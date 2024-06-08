@@ -19,87 +19,64 @@ from params import (
     PREFETCH_FACTOR,
 )
 
-class SEBlock(nn.Module):
-    def __init__(self, channel, reduction=16):
-        super(SEBlock, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.fc = nn.Sequential(
-            nn.Linear(channel, channel // reduction, bias=False),
-            nn.ReLU(inplace=True),
-            nn.Linear(channel // reduction, channel, bias=False),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        b, c, _, _ = x.size()
-        y = self.avg_pool(x).view(b, c)
-        y = self.fc(y).view(b, c, 1, 1)
-        return x * y.expand_as(x)
-
-class ResidualBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, stride=1):
-        super(ResidualBlock, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(out_channels)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(out_channels)
-        self.se = SEBlock(out_channels)
-        self.downsample = None
-        if stride != 1 or in_channels != out_channels:
-            self.downsample = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(out_channels)
-            )
-
-    def forward(self, x):
-        identity = x
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-        out = self.conv2(out)
-        out = self.bn2(out)
-        out = self.se(out)
-        if self.downsample is not None:
-            identity = self.downsample(x)
-        out += identity
-        out = self.relu(out)
-        return out
-
-class EnhancedAFNet(nn.Module):
+class OptimizedAFNet(nn.Module):
     def __init__(self):
-        super(EnhancedAFNet, self).__init__()
-        self.layer1 = nn.Sequential(
-            nn.Conv2d(1, 16, kernel_size=7, stride=2, padding=3, bias=False),
-            nn.BatchNorm2d(16),
-            nn.ReLU(inplace=True)
+        super(OptimizedAFNet, self).__init__()
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(in_channels=1, out_channels=16, kernel_size=(7, 1), stride=(2, 1), padding=0),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+            nn.BatchNorm2d(16, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
         )
-        self.layer2 = self._make_layer(16, 32, 2, stride=2)
-        self.layer3 = self._make_layer(32, 64, 2, stride=2)
-        self.layer4 = self._make_layer(64, 128, 2, stride=2)
-        self.layer5 = self._make_layer(128, 128, 2, stride=2)
+
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(5, 1), stride=(2, 1), padding=0),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+            nn.BatchNorm2d(32, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
+        )
+
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=(5, 1), stride=(2, 1), padding=0),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+            nn.BatchNorm2d(64, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
+        )
+
+        self.conv4 = nn.Sequential(
+            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(3, 1), stride=(2, 1), padding=0),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+            nn.BatchNorm2d(128, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
+        )
+
+        self.conv5 = nn.Sequential(
+            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 1), stride=(2, 1), padding=0),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+            nn.BatchNorm2d(128, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
+        )
+
         self.global_avg_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc1 = nn.Linear(128, 64)
-        self.fc2 = nn.Linear(64, 2)
 
-    def _make_layer(self, in_channels, out_channels, blocks, stride=1):
-        layers = []
-        layers.append(ResidualBlock(in_channels, out_channels, stride))
-        for _ in range(1, blocks):
-            layers.append(ResidualBlock(out_channels, out_channels))
-        return nn.Sequential(*layers)
+        self.fc1 = nn.Sequential(
+            nn.Dropout(0.5),
+            nn.Linear(in_features=128, out_features=64),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+        )
 
-    def forward(self, x):
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
-        x = self.layer5(x)
-        x = self.global_avg_pool(x)
-        x = x.view(x.size(0), -1)
-        x = F.relu(self.fc1(x))
-        x = self.fc2(x)
-        return x
+        self.fc2 = nn.Sequential(
+            nn.Linear(in_features=64, out_features=2)
+        )
+
+    def forward(self, input):
+        conv1_output = self.conv1(input)
+        conv2_output = self.conv2(conv1_output)
+        conv3_output = self.conv3(conv2_output)
+        conv4_output = self.conv4(conv3_output)
+        conv5_output = self.conv5(conv4_output)
+
+        pooled_output = self.global_avg_pool(conv5_output)
+        pooled_output = pooled_output.view(pooled_output.size(0), -1)  # Flatten the tensor
+
+        fc1_output = self.fc1(pooled_output)
+        fc2_output = self.fc2(fc1_output)
+        return fc2_output
 
 class SimpleCNN(nn.Module):
     def __init__(self):
