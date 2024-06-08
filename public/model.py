@@ -27,48 +27,9 @@ def calculate_conv_output_size(input_size, kernel_size, padding, stride):
 
 
 # 定义CNN模型
-class CNNModel(nn.Module):
-    def __init__(self, input_size=1250):
-        super(CNNModel, self).__init__()
-        self.quant = torch.ao.quantization.QuantStub()
-        self.dequant = torch.ao.quantization.DeQuantStub()
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=(1, 3), padding=(0, 1))
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=(1, 3), padding=(0, 1))
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=(1, 3), padding=(0, 1))
-        self.conv4 = nn.Conv2d(128, 256, kernel_size=(1, 3), padding=(0, 1))
-        self.conv5 = nn.Conv2d(256, 512, kernel_size=(1, 3), padding=(0, 1))
-        self.conv6 = nn.Conv2d(512, 1024, kernel_size=(1, 3), padding=(0, 1))
-        self.pool = nn.MaxPool2d((1, 2), (1, 2))
-        self.dropout = nn.Dropout(0.5)
-
-        # 计算每层的输出大小
-        pool6_output_size = input_size // (2 ** 6)  # 经过6次池化，每次池化尺寸减半
-
-        self.fc1 = nn.Linear(1024 * pool6_output_size, 512)
-        self.fc2 = nn.Linear(512, 256)
-        self.fc3 = nn.Linear(256, 128)
-        self.fc4 = nn.Linear(128, 2)
-
-    def forward(self, x):
-        x = self.quant(x)
-        x = self.pool(torch.relu(self.conv1(x)))
-        x = self.pool(torch.relu(self.conv2(x)))
-        x = self.pool(torch.relu(self.conv3(x)))
-        x = self.pool(torch.relu(self.conv4(x)))
-        x = self.pool(torch.relu(self.conv5(x)))
-        x = self.pool(torch.relu(self.conv6(x)))
-        x = x.reshape(x.size(0), -1)
-        x = torch.relu(self.fc1(x))
-        x = self.dropout(x)
-        x = torch.relu(self.fc2(x))
-        x = self.dropout(x)
-        x = torch.relu(self.fc3(x))
-        x = self.dropout(x)
-        x = self.fc4(x)
-        x = self.dequant(x)
-        return x
-
-
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 class ShuffleNetV2Block(nn.Module):
     def __init__(self, in_channels, out_channels, stride):
@@ -82,7 +43,7 @@ class ShuffleNetV2Block(nn.Module):
                 nn.Conv2d(in_channels // 2, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(mid_channels),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=stride, padding=1, groups=mid_channels, bias=False),
+                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=stride, padding=1, bias=False),  # 普通卷积
                 nn.BatchNorm2d(mid_channels),
                 nn.Conv2d(mid_channels, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(mid_channels)
@@ -92,13 +53,13 @@ class ShuffleNetV2Block(nn.Module):
                 nn.Conv2d(in_channels, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(mid_channels),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=stride, padding=1, groups=mid_channels, bias=False),
+                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=stride, padding=1, bias=False),  # 普通卷积
                 nn.BatchNorm2d(mid_channels),
                 nn.Conv2d(mid_channels, out_channels - in_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(out_channels - in_channels)
             )
             self.branch_proj = nn.Sequential(
-                nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=stride, padding=1, groups=in_channels, bias=False),
+                nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=stride, padding=1, bias=False),  # 普通卷积
                 nn.BatchNorm2d(in_channels),
                 nn.Conv2d(in_channels, in_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(in_channels)
@@ -136,7 +97,7 @@ class ShuffleNetV2(nn.Module):
         self.stage3 = self._make_stage(8, 16, 1)  # 从1个block减少到1个
 
         self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.classifier = nn.Conv2d(16, num_classes, kernel_size=1, stride=1, padding=0, bias=True)
+        self.classifier = nn.Linear(16, num_classes)
 
     def _make_stage(self, in_channels, out_channels, num_blocks):
         layers = [ShuffleNetV2Block(in_channels, out_channels, stride=2)]
@@ -149,9 +110,10 @@ class ShuffleNetV2(nn.Module):
         x = self.stage2(x)
         x = self.stage3(x)
         x = self.global_pool(x)
+        x = x.view(x.size(0), -1)  # 展平
         x = self.classifier(x)
-        x = x.view(x.size(0), -1)
         return x
+
 
 
 
