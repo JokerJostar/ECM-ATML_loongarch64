@@ -25,6 +25,16 @@ from params import (
 def calculate_conv_output_size(input_size, kernel_size, padding, stride):
     return (input_size - kernel_size + 2 * padding) // stride + 1
 
+class LinearBinaryClassifier(nn.Module):
+    def __init__(self, input_size=1250):
+        super(LinearBinaryClassifier, self).__init__()
+        self.linear = nn.Linear(input_size, 2)  # 输出类别数为2
+    
+    def forward(self, x):
+        x = x.view(x.size(0), -1)
+        x = self.linear(x)
+        return x
+
 
 
 class ShuffleNetV2Block(nn.Module):
