@@ -40,14 +40,14 @@ ECM
 
 ## 模型选择
 
-### shufflenet
+### blocknet
 
 ShuffleNet
-本针对龙芯平台设计了两个版本的shufflenet
+本针对龙芯平台设计了两个版本的net
 
 1. 保留了channel shuffle和block结构的shufflenet
 
-2. 去除了channel shuffle但保留了block结构的shufflenet
+2. 去除了channel shuffle但保留了block结构的blocknet
 
 结果是channel shuffle在低算力平台对精度几乎没有影响
 
