@@ -13,7 +13,7 @@ from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_sc
 from sklearn.model_selection import train_test_split
 from tqdm.auto import tqdm as tqdmauto
 
-from public.model import  OptimizedAFNet as Net
+from public.model import  EnhancedAFNet as Net
 from public.dataset import ECGDataset
 from public.test import test_model
 import math
