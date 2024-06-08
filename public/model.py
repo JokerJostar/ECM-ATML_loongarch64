@@ -81,7 +81,7 @@ class ShuffleNetV2Block(nn.Module):
                 nn.Conv2d(in_channels // 2, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(mid_channels),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=stride, padding=1, bias=False),
+                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=stride, padding=1, bias=False, groups=mid_channels),  # depthwise convolution
                 nn.BatchNorm2d(mid_channels),
                 nn.Conv2d(mid_channels, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(mid_channels),
@@ -92,14 +92,14 @@ class ShuffleNetV2Block(nn.Module):
                 nn.Conv2d(in_channels, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(mid_channels),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=stride, padding=1, bias=False),
+                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=stride, padding=1, bias=False, groups=mid_channels),  # depthwise convolution
                 nn.BatchNorm2d(mid_channels),
                 nn.Conv2d(mid_channels, out_channels - in_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(out_channels - in_channels),
                 nn.ReLU(inplace=True)
             )
             self.branch_proj = nn.Sequential(
-                nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=stride, padding=1, bias=False),
+                nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=stride, padding=1, bias=False, groups=in_channels),  # depthwise convolution
                 nn.BatchNorm2d(in_channels),
                 nn.Conv2d(in_channels, in_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(in_channels),
