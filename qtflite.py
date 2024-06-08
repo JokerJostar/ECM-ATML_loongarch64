@@ -1,5 +1,7 @@
 import tensorflow as tf
 import numpy as np
+import random
+import os
 
 # 加载 SavedModel
 saved_model_dir = "tflite/"
@@ -9,9 +11,23 @@ loaded_model = tf.saved_model.load(saved_model_dir)
 
 # 定义代表性数据生成器函数
 def representative_data_gen():
-    for _ in range(50):  # 生成50个样本
-        # 生成随机数据，这里假设输入是你模型的输入形状
-        input_data = np.random.rand(batch_size, input_height, input_width, input_channels).astype(np.float32)
+    train_data_folder = 'train_data'
+    txt_files = [f for f in os.listdir(train_data_folder) if f.endswith('.txt')]
+    
+    # 随机选择80个文件
+    selected_files = random.sample(txt_files, 80)
+    
+    for file_name in selected_files:
+        file_path = os.path.join(train_data_folder, file_name)
+        
+        # 读取文件中的浮点数
+        with open(file_path, 'r') as file:
+            data = file.readlines()
+        
+        # 将数据转换为numpy数组，并改变形状
+        data = np.array([float(x.strip()) for x in data], dtype=np.float32)
+        input_data = data.reshape((1, 1250, 1, 1))  # batch_size=1, 高=1250, 宽=1, 通道=1
+        
         yield [input_data]
 
 # 定义输入数据的形状
