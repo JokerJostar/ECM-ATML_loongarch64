@@ -19,7 +19,32 @@ from params import (
     PREFETCH_FACTOR,
 )
 
+class SimpleCNN(nn.Module):
+    def __init__(self):
+        super(SimpleCNN, self).__init__()
+        
+        # 第一层卷积层
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=16, kernel_size=(3, 1), stride=1, padding=1)
+        self.pool = nn.MaxPool2d(kernel_size=(2, 1), stride=(2, 1))
+        
+        # 第二层卷积层
+        self.conv2 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(3, 1), stride=1, padding=1)
+        
+        # 全连接层
+        self.fc1 = nn.Linear(32 * 312 * 5, 128)  # 根据打印的形状调整输入大小
+        self.fc2 = nn.Linear(128, 2)
+        
+    def forward(self, x):
+        x = self.pool(F.relu(self.conv1(x)))  # 形状变为 (batch_size, 16, 625, 1)
+        x = self.pool(F.relu(self.conv2(x)))  # 形状变为 (batch_size, 32, 312, 5)
 
+
+        x = x.view(x.size(0), -1)  # 自动计算展平后的大小
+        
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        
+        return x
 
 # 计算卷积输出大小的辅助函数
 def calculate_conv_output_size(input_size, kernel_size, padding, stride):
