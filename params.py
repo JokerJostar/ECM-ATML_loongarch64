@@ -5,7 +5,7 @@
 AVOID_FILE_PATH = './avoid.txt'
 
 # Directory where the training data is stored
-DATA_DIR = 'train_data'
+DATA_DIR = '/home/inspur/nfs/lyq/training_dataset/train_data'
 
 # Path where the trained model will be saved
 MODEL_SAVE_PATH = 'temp/saved_model/saved'
