@@ -28,11 +28,12 @@ class ShuffleNetV2Block(nn.Module):
     def __init__(self, in_channels, out_channels, stride):
         super(ShuffleNetV2Block, self).__init__()
         self.stride = stride
+
         mid_channels = out_channels // 2
 
         if self.stride == 1:
             self.branch_main = nn.Sequential(
-                nn.Conv2d(in_channels // 2, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
+                nn.Conv2d(in_channels // 2, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
                 nn.BatchNorm2d(mid_channels),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
@@ -60,23 +61,26 @@ class ShuffleNetV2Block(nn.Module):
             out = torch.cat((x1, self.branch_main(x2)), dim=1)
         else:
             out = torch.cat((self.branch_proj(x), self.branch_main(x)), dim=1)
+
         return out
+
+
 
 class ShuffleNetV2(nn.Module):
     def __init__(self, num_classes=2):
         super(ShuffleNetV2, self).__init__()
 
         self.stage1 = nn.Sequential(
-            nn.Conv2d(1, 16, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(16),
+            nn.Conv2d(1, 8, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(8),
             nn.ReLU(inplace=True)
         )
 
-        self.stage2 = self._make_stage(16, 32, 3)  # 增加 block 数量和通道数
-        self.stage3 = self._make_stage(32, 64, 4)  # 增加 block 数量和通道数
-        self.stage4 = self._make_stage(64, 128, 3)  # 新增 stage
+        self.stage2 = self._make_stage(8, 16, 2)  # 增加块数
+        self.stage3 = self._make_stage(16, 32, 2)  # 增加块数
+        self.stage4 = self._make_stage(32, 64, 1)  # 添加新阶段
 
-        self.fc = nn.Linear(128, num_classes)  # 调整全连接层输入
+        self.fc = nn.Linear(64, num_classes)
 
     def _make_stage(self, in_channels, out_channels, num_blocks):
         layers = []
@@ -90,13 +94,10 @@ class ShuffleNetV2(nn.Module):
         x = self.stage1(x)
         x = self.stage2(x)
         x = self.stage3(x)
-        x = self.stage4(x)
+        x = self.stage4(x)  # 添加新阶段到前向传播中
         x = F.adaptive_avg_pool2d(x, 1).view(x.size(0), -1)
         x = self.fc(x)
         return x
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 
 
 class BasicBlock(nn.Module):
