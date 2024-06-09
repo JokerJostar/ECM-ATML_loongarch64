@@ -116,4 +116,4 @@ conda create -n ECM&ATML python=3.10 pytorch==1.2.2 torchvision==0.17.2 torchaud
 - [JokerJostar(林宇祺)](https://github.com/JokerJostar)`2530204503@qq.com`2023级大一
 
 ## 声明
-整个项目以参加IESD-2024大赛为契机，由本人自2024年5月19日从零开始独立完成，模型结构，训练框架与超参优化算法等均为原创，他人未经本人许可不得使用。
+本项目以参加IESD-2024大赛为契机，由本人自2024年5月19日开始搭建与维护。
