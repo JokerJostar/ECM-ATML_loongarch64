@@ -19,6 +19,82 @@ from params import (
     PREFETCH_FACTOR,
 )
 
+
+class BlockNetV2Block(nn.Module):
+    def __init__(self, in_channels, out_channels, stride):
+        super(BlockNetV2Block, self).__init__()
+        self.stride = stride
+
+        mid_channels = out_channels // 2
+
+        if self.stride == 1:
+            self.branch_main = nn.Sequential(
+                nn.Conv2d(in_channels // 2, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.BatchNorm2d(mid_channels),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.BatchNorm2d(mid_channels),
+                nn.ReLU(inplace=True)
+            )
+        else:
+            self.branch_main = nn.Sequential(
+                nn.Conv2d(in_channels, mid_channels, kernel_size=3, stride=stride, padding=1, bias=False),
+                nn.BatchNorm2d(mid_channels),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.BatchNorm2d(mid_channels),
+                nn.ReLU(inplace=True)
+            )
+            self.branch_proj = nn.Sequential(
+                nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=stride, padding=1, bias=False),
+                nn.BatchNorm2d(in_channels),
+                nn.ReLU(inplace=True)
+            )
+
+    def forward(self, x):
+        if self.stride == 1:
+            x1, x2 = torch.chunk(x, 2, dim=1)
+            out = torch.cat((x1, self.branch_main(x2)), dim=1)
+        else:
+            out = torch.cat((self.branch_proj(x), self.branch_main(x)), dim=1)
+
+        return out
+
+
+
+class BlockNetV2(nn.Module):
+    def __init__(self, num_classes=2):
+        super(BlockNetV2, self).__init__()
+
+        self.stage1 = nn.Sequential(
+            nn.Conv2d(1, 8, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(8),
+            nn.ReLU(inplace=True)
+        )
+
+        self.stage2 = self._make_stage(8, 16, 2)  # 增加块数
+        self.stage3 = self._make_stage(16, 32, 2)  # 增加块数
+        self.stage4 = self._make_stage(32, 64, 1)  # 添加新阶段
+
+        self.fc = nn.Linear(64, num_classes)
+
+    def _make_stage(self, in_channels, out_channels, num_blocks):
+        layers = []
+        for i in range(num_blocks):
+            stride = 2 if i == 0 else 1
+            layers.append(BlockNetV2Block(in_channels, out_channels, stride))
+            in_channels = out_channels
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = self.stage1(x)
+        x = self.stage2(x)
+        x = self.stage3(x)
+        x = self.stage4(x)  # 添加新阶段到前向传播中
+        x = F.adaptive_avg_pool2d(x, 1).view(x.size(0), -1)
+        x = self.fc(x)
+        return x
+
 class OptimizedAFNet(nn.Module):
     def __init__(self):
         super(OptimizedAFNet, self).__init__()
