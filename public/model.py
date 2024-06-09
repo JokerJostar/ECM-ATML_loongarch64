@@ -19,6 +19,215 @@ from params import (
     PREFETCH_FACTOR,
 )
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class SEBlock(nn.Module):
+    def __init__(self, in_channels, reduction=16):
+        super(SEBlock, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(in_channels, in_channels // reduction, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(in_channels // reduction, in_channels, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1)
+        return x * y.expand_as(x)
+
+class ShuffleNetV2Block(nn.Module):
+    def __init__(self, in_channels, out_channels, stride):
+        super(ShuffleNetV2Block, self).__init__()
+        self.stride = stride
+
+        mid_channels = out_channels // 2
+
+        if self.stride == 1:
+            self.branch_main = nn.Sequential(
+                nn.Conv2d(in_channels // 2, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
+                nn.BatchNorm2d(mid_channels),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.BatchNorm2d(mid_channels),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(mid_channels, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
+                nn.BatchNorm2d(mid_channels),
+                nn.ReLU(inplace=True),
+                SEBlock(mid_channels)
+            )
+        else:
+            self.branch_main = nn.Sequential(
+                nn.Conv2d(in_channels, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
+                nn.BatchNorm2d(mid_channels),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=stride, padding=1, bias=False),
+                nn.BatchNorm2d(mid_channels),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(mid_channels, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
+                nn.BatchNorm2d(mid_channels),
+                nn.ReLU(inplace=True),
+                SEBlock(mid_channels)
+            )
+            self.branch_proj = nn.Sequential(
+                nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=stride, padding=1, bias=False),
+                nn.BatchNorm2d(in_channels),
+                nn.ReLU(inplace=True)
+            )
+
+    def forward(self, x):
+        if self.stride == 1:
+            x1, x2 = torch.chunk(x, 2, dim=1)
+            out = torch.cat((x1, self.branch_main(x2)), dim=1)
+        else:
+            out = torch.cat((self.branch_proj(x), self.branch_main(x)), dim=1)
+
+        return out
+
+class ShuffleNetV2(nn.Module):
+    def __init__(self, num_classes=2):
+        super(ShuffleNetV2, self).__init__()
+
+        self.stage1 = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(16),
+            nn.ReLU(inplace=True)
+        )
+
+        self.stage2 = self._make_stage(16, 32, 4)  # 增加 block 数量
+        self.stage3 = self._make_stage(32, 64, 8)  # 增加 block 数量
+        self.stage4 = self._make_stage(64, 128, 4)  # 新增的 stage
+
+        self.fc = nn.Linear(128, num_classes)
+
+    def _make_stage(self, in_channels, out_channels, num_blocks):
+        layers = []
+        for i in range(num_blocks):
+            stride = 2 if i == 0 else 1
+            layers.append(ShuffleNetV2Block(in_channels, out_channels, stride))
+            in_channels = out_channels
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = self.stage1(x)
+        x = self.stage2(x)
+        x = self.stage3(x)
+        x = self.stage4(x)
+        x = F.adaptive_avg_pool2d(x, 1).view(x.size(0), -1)
+        x = self.fc(x)
+        return x
+
+
+
+class BasicBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, stride=1):
+        super(BasicBlock, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+
+        self.downsample = None
+        if stride != 1 or in_channels != out_channels:
+            self.downsample = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(out_channels)
+            )
+
+    def forward(self, x):
+        identity = x
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+        return out
+
+class SimpleResNet(nn.Module):
+    def __init__(self, num_classes=2):
+        super(SimpleResNet, self).__init__()
+        self.in_channels = 32  # Reduced initial number of channels
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=7, stride=2, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm2d(32)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+
+        self.layer1 = self._make_layer(32, 1)  # Reduced number of blocks
+        self.layer2 = self._make_layer(64, 1, stride=2)  # Reduced number of blocks
+        self.layer3 = self._make_layer(128, 1, stride=2)  # Reduced number of blocks
+        self.layer4 = self._make_layer(256, 1, stride=2)  # Reduced number of blocks
+
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(256, num_classes)  # Reduced the number of neurons
+
+    def _make_layer(self, out_channels, blocks, stride=1):
+        layers = []
+        layers.append(BasicBlock(self.in_channels, out_channels, stride))
+        self.in_channels = out_channels
+        for _ in range(1, blocks):
+            layers.append(BasicBlock(self.in_channels, out_channels))
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
+        return x
+
+class CustomModel(nn.Module):
+    def __init__(self):
+        super(CustomModel, self).__init__()
+        
+        # Define the layers according to the diagram
+        self.conv1 = nn.Conv2d(1, 4, kernel_size=(3, 3), padding=(2, 2))  # Input: 1x1250x1x1, Output: 1x625x1x4
+        self.conv2a = nn.Conv2d(4, 4, kernel_size=(3, 3), padding=(2, 2))  # Input: 1x627x3x4, Output: 1x313x1x4
+        self.conv2b = nn.Conv2d(4, 4, kernel_size=(3, 3), padding=(2, 2))  # Input: 1x627x3x4, Output: 1x313x1x4
+        self.conv3a = nn.Conv2d(8, 8, kernel_size=(3, 3), padding=(2, 2))  # Input: 1x315x3x8, Output: 1x157x1x8
+        self.conv3b = nn.Conv2d(8, 8, kernel_size=(3, 3), padding=(2, 2))  # Input: 1x315x3x8, Output: 1x157x1x8
+        
+        self.fc = nn.Linear(16, 2)
+    
+    def forward(self, x):
+        x = F.relu(self.conv1(x))
+        x = F.pad(x, (2, 2, 2, 2))
+        
+        x1 = F.relu(self.conv2a(x))
+        x2 = F.relu(self.conv2b(x))
+        
+        x = torch.cat((x1, x2), dim=1)
+        x = F.pad(x, (2, 2, 2, 2))
+        
+        x1 = F.relu(self.conv3a(x))
+        x2 = F.relu(self.conv3b(x))
+        
+        x = torch.cat((x1, x2), dim=1)
+        
+        x = torch.mean(x, dim=(2, 3))
+        x = self.fc(x)
+        
+        return x
+
 
 class DepthwiseSeparableConv(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
@@ -224,76 +433,6 @@ class LinearBinaryClassifier(nn.Module):
         return x
 
 
-class ShuffleNetV2Block(nn.Module):
-    def __init__(self, in_channels, out_channels, stride):
-        super(ShuffleNetV2Block, self).__init__()
-        self.stride = stride
-
-        mid_channels = out_channels // 2
-
-        if self.stride == 1:
-            self.branch_main = nn.Sequential(
-                nn.Conv2d(in_channels // 2, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
-                nn.BatchNorm2d(mid_channels),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
-                nn.BatchNorm2d(mid_channels),
-                nn.ReLU(inplace=True)
-            )
-        else:
-            self.branch_main = nn.Sequential(
-                nn.Conv2d(in_channels, mid_channels, kernel_size=3, stride=stride, padding=1, bias=False),
-                nn.BatchNorm2d(mid_channels),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
-                nn.BatchNorm2d(mid_channels),
-                nn.ReLU(inplace=True)
-            )
-            self.branch_proj = nn.Sequential(
-                nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=stride, padding=1, bias=False),
-                nn.BatchNorm2d(in_channels),
-                nn.ReLU(inplace=True)
-            )
-
-    def forward(self, x):
-        if self.stride == 1:
-            x1, x2 = torch.chunk(x, 2, dim=1)
-            out = torch.cat((x1, self.branch_main(x2)), dim=1)
-        else:
-            out = torch.cat((self.branch_proj(x), self.branch_main(x)), dim=1)
-
-        return out
-
-class ShuffleNetV2(nn.Module):
-    def __init__(self, num_classes=2):
-        super(ShuffleNetV2, self).__init__()
-
-        self.stage1 = nn.Sequential(
-            nn.Conv2d(1, 4, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(4),
-            nn.ReLU(inplace=True)
-        )
-
-        self.stage2 = self._make_stage(4, 8, 1)  # Increase number of blocks
-        self.stage3 = self._make_stage(8, 16, 1)  # Increase number of blocks
-
-        self.fc = nn.Linear(16, num_classes)
-
-    def _make_stage(self, in_channels, out_channels, num_blocks):
-        layers = []
-        for i in range(num_blocks):
-            stride = 2 if i == 0 else 1
-            layers.append(ShuffleNetV2Block(in_channels, out_channels, stride))
-            in_channels = out_channels
-        return nn.Sequential(*layers)
-
-    def forward(self, x):
-        x = self.stage1(x)
-        x = self.stage2(x)
-        x = self.stage3(x)
-        x = F.adaptive_avg_pool2d(x, 1).view(x.size(0), -1)
-        x = self.fc(x)
-        return x
 
 
 
