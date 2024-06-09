@@ -46,7 +46,7 @@ ECM
 
 基于resnet和shufflenet改进的blocknet，通过不同的block通过pad链接起来，在增加很少的计算压力的情况下容纳更多的特征，val_loss可以收敛到0.0045左右
 
-结构代码详情见public/model.py 中的BlockNetV2类
+结构代码详情见`public/model.py` 中的BlockNetV2类
 
 这个结构的模型量化后大小为9kb，训练轮数少，3个epoch就可以收敛到位，但是量化对其精度影响大。
 
