@@ -40,23 +40,15 @@ ECM
 
 ## 模型选择
 
-### blocknet
+### BlockNet
 
-本针对龙芯平台设计了两个版本的net
+本人针对龙芯平台设计了的net
 
-1. 保留了channel shuffle和block结构的shufflenet
+基于resnet和shufflenet改进的blocknet，通过不同的block通过pad链接起来，在增加很少的计算压力的情况下容纳更多的特征，val_loss可以收敛到0.0045左右
 
-2. 去除了channel shuffle但保留了block结构的blocknet(model.py里的类名是shufflenev2)
-
-结果是channel shuffle在低算力平台对精度几乎没有影响
-
-最后使用了基于resnet改进的blocknet，包括残差过滤层，通过不同的block链接起来，为了适配tflite除去了归一层，val_loss可以收敛到0.0045左右
+结构代码详情见public/model.py 中的BlockNetV2类
 
 这个结构的模型量化后大小为9kb，训练轮数少，3个epoch就可以收敛到位，但是量化对其精度影响大。
-
-### 单程线性的卷积网络
-
-简单的卷积网络，体积稍大但是结构简单，速度更快
 
 ### 其他
 
