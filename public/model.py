@@ -19,7 +19,111 @@ from params import (
     PREFETCH_FACTOR,
 )
 
-class OptimizedAFNet(nn.Module):
+
+class DepthwiseSeparableConv(nn.Module):
+    def __init__(self, in_channels, out_channels, stride=1):
+        super(DepthwiseSeparableConv, self).__init__()
+        self.depthwise = nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=stride, padding=1, groups=in_channels, bias=False)
+        self.pointwise = nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
+        self.bn = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU6(inplace=True)
+
+    def forward(self, x):
+        x = self.depthwise(x)
+        x = self.pointwise(x)
+        x = self.bn(x)
+        return self.relu(x)
+
+class SimplifiedMobileNetBinaryClassifier(nn.Module):
+    def __init__(self, num_classes=2):
+        super(SimplifiedMobileNetBinaryClassifier, self).__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(16),
+            nn.ReLU6(inplace=True),
+            DepthwiseSeparableConv(16, 32, stride=1),
+            DepthwiseSeparableConv(32, 64, stride=2),
+            DepthwiseSeparableConv(64, 128, stride=2),
+            DepthwiseSeparableConv(128, 256, stride=2),
+        )
+        self.classifier = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Linear(256, num_classes)
+        )
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.classifier(x)
+        return x
+
+class Swish(nn.Module):
+    def forward(self, x):
+        return x * torch.sigmoid(x)
+
+class MBConvBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, expand_ratio, stride):
+        super(MBConvBlock, self).__init__()
+        self.stride = stride
+        self.expand_ratio = expand_ratio
+        hidden_dim = in_channels * expand_ratio
+        
+        self.use_residual = self.stride == 1 and in_channels == out_channels
+
+        layers = []
+        if expand_ratio != 1:
+            layers.append(nn.Conv2d(in_channels, hidden_dim, kernel_size=1, bias=False))
+            layers.append(nn.BatchNorm2d(hidden_dim))
+            layers.append(Swish())
+
+        layers.extend([
+            nn.Conv2d(hidden_dim, hidden_dim, kernel_size=3, stride=stride, padding=1, groups=hidden_dim, bias=False),
+            nn.BatchNorm2d(hidden_dim),
+            Swish(),
+            nn.Conv2d(hidden_dim, out_channels, kernel_size=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+        ])
+        
+        self.block = nn.Sequential(*layers)
+
+    def forward(self, x):
+        if self.use_residual:
+            return x + self.block(x)
+        else:
+            return self.block(x)
+
+class SimplifiedEfficientNet(nn.Module):
+    def __init__(self, num_classes=2):
+        super(SimplifiedEfficientNet, self).__init__()
+        self.stem = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(16),
+            Swish()
+        )
+
+        self.blocks = nn.Sequential(
+            MBConvBlock(16, 24, expand_ratio=1, stride=1),
+            MBConvBlock(24, 40, expand_ratio=6, stride=2),
+            MBConvBlock(40, 80, expand_ratio=6, stride=2),
+        )
+
+        self.head = nn.Sequential(
+            nn.Conv2d(80, 128, kernel_size=1, bias=False),
+            nn.BatchNorm2d(128),
+            Swish(),
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Linear(128, num_classes)
+        )
+
+    def forward(self, x):
+        x = self.stem(x)
+        x = self.blocks(x)
+        x = self.head(x)
+        return x
+
+
+class OptimizedAFNet(nn.Module): 
     def __init__(self):
         super(OptimizedAFNet, self).__init__()
         self.conv1 = nn.Sequential(
