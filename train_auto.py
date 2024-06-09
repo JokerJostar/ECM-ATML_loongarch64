@@ -135,7 +135,7 @@ def main():
             print(f'patience_counter: {patience_counter}/{PATIENCE_COUNTER_MAX}')
 
             dataset = ECGDataset(DATA_DIR)
-            indices = list(range(50000))
+            indices = list(range(len(dataset)))
             train_indices, val_indices = train_test_split(indices, test_size=0.2, random_state=42)
             train_subset = Subset(dataset, train_indices)
             val_subset = Subset(dataset, val_indices)
