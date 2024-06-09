@@ -44,7 +44,7 @@ ECM
 
 本人针对龙芯平台设计了的net
 
-基于resnet和shufflenet改进的blocknet，通过不同的block通过pad链接起来，在增加很少的计算压力的情况下容纳更多的特征，val_loss可以收敛到0.0045左右
+基于resnet和shufflenet改进的blocknet，精简block结构后,不同的block之间通过pad链接起来，在增加很少的计算压力的情况下容纳更多的特征，val_loss可以收敛到0.0045左右
 
 结构代码详情见`public/model.py` 中的BlockNetV2类
 
