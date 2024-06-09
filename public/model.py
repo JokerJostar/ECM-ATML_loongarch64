@@ -23,28 +23,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class SEBlock(nn.Module):
-    def __init__(self, in_channels, reduction=16):
-        super(SEBlock, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.fc = nn.Sequential(
-            nn.Linear(in_channels, in_channels // reduction, bias=False),
-            nn.ReLU(inplace=True),
-            nn.Linear(in_channels // reduction, in_channels, bias=False),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        b, c, _, _ = x.size()
-        y = self.avg_pool(x).view(b, c)
-        y = self.fc(y).view(b, c, 1, 1)
-        return x * y.expand_as(x)
 
 class ShuffleNetV2Block(nn.Module):
     def __init__(self, in_channels, out_channels, stride):
         super(ShuffleNetV2Block, self).__init__()
         self.stride = stride
-
         mid_channels = out_channels // 2
 
         if self.stride == 1:
@@ -54,24 +37,16 @@ class ShuffleNetV2Block(nn.Module):
                 nn.ReLU(inplace=True),
                 nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
                 nn.BatchNorm2d(mid_channels),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(mid_channels, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
-                nn.BatchNorm2d(mid_channels),
-                nn.ReLU(inplace=True),
-                SEBlock(mid_channels)
+                nn.ReLU(inplace=True)
             )
         else:
             self.branch_main = nn.Sequential(
-                nn.Conv2d(in_channels, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
+                nn.Conv2d(in_channels, mid_channels, kernel_size=3, stride=stride, padding=1, bias=False),
                 nn.BatchNorm2d(mid_channels),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=stride, padding=1, bias=False),
+                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
                 nn.BatchNorm2d(mid_channels),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(mid_channels, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
-                nn.BatchNorm2d(mid_channels),
-                nn.ReLU(inplace=True),
-                SEBlock(mid_channels)
+                nn.ReLU(inplace=True)
             )
             self.branch_proj = nn.Sequential(
                 nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=stride, padding=1, bias=False),
@@ -85,7 +60,6 @@ class ShuffleNetV2Block(nn.Module):
             out = torch.cat((x1, self.branch_main(x2)), dim=1)
         else:
             out = torch.cat((self.branch_proj(x), self.branch_main(x)), dim=1)
-
         return out
 
 class ShuffleNetV2(nn.Module):
@@ -98,11 +72,11 @@ class ShuffleNetV2(nn.Module):
             nn.ReLU(inplace=True)
         )
 
-        self.stage2 = self._make_stage(16, 32, 4)  # 增加 block 数量
-        self.stage3 = self._make_stage(32, 64, 8)  # 增加 block 数量
-        self.stage4 = self._make_stage(64, 128, 4)  # 新增的 stage
+        self.stage2 = self._make_stage(16, 32, 3)  # 增加 block 数量和通道数
+        self.stage3 = self._make_stage(32, 64, 4)  # 增加 block 数量和通道数
+        self.stage4 = self._make_stage(64, 128, 3)  # 新增 stage
 
-        self.fc = nn.Linear(128, num_classes)
+        self.fc = nn.Linear(128, num_classes)  # 调整全连接层输入
 
     def _make_stage(self, in_channels, out_channels, num_blocks):
         layers = []
@@ -120,7 +94,9 @@ class ShuffleNetV2(nn.Module):
         x = F.adaptive_avg_pool2d(x, 1).view(x.size(0), -1)
         x = self.fc(x)
         return x
-
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 
 class BasicBlock(nn.Module):
