@@ -23,34 +23,44 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+class DepthwiseSeparableConv(nn.Module):
+    def __init__(self, in_channels, out_channels, stride=1):
+        super(DepthwiseSeparableConv, self).__init__()
+        self.depthwise = nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=stride, padding=1, groups=in_channels, bias=False)
+        self.pointwise = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
+        self.bn = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        x = self.depthwise(x)
+        x = self.pointwise(x)
+        x = self.bn(x)
+        x = self.relu(x)
+        return x
 
 class ShuffleNetV2Block(nn.Module):
     def __init__(self, in_channels, out_channels, stride):
         super(ShuffleNetV2Block, self).__init__()
         self.stride = stride
-
         mid_channels = out_channels // 2
 
         if self.stride == 1:
             self.branch_main = nn.Sequential(
-                nn.Conv2d(in_channels // 2, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
-                nn.BatchNorm2d(mid_channels),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
+                DepthwiseSeparableConv(in_channels // 2, mid_channels),
+                nn.Conv2d(mid_channels, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(mid_channels),
                 nn.ReLU(inplace=True)
             )
         else:
             self.branch_main = nn.Sequential(
-                nn.Conv2d(in_channels, mid_channels, kernel_size=3, stride=stride, padding=1, bias=False),
-                nn.BatchNorm2d(mid_channels),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1, bias=False),
+                DepthwiseSeparableConv(in_channels, mid_channels, stride=stride),
+                nn.Conv2d(mid_channels, mid_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(mid_channels),
                 nn.ReLU(inplace=True)
             )
             self.branch_proj = nn.Sequential(
-                nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=stride, padding=1, bias=False),
+                DepthwiseSeparableConv(in_channels, in_channels, stride=stride),
+                nn.Conv2d(in_channels, in_channels, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(in_channels),
                 nn.ReLU(inplace=True)
             )
@@ -61,10 +71,22 @@ class ShuffleNetV2Block(nn.Module):
             out = torch.cat((x1, self.branch_main(x2)), dim=1)
         else:
             out = torch.cat((self.branch_proj(x), self.branch_main(x)), dim=1)
-
         return out
 
+class SqueezeExcite(nn.Module):
+    def __init__(self, in_channels, reduction=4):
+        super(SqueezeExcite, self).__init__()
+        reduced_channels = in_channels // reduction
+        self.fc1 = nn.Conv2d(in_channels, reduced_channels, kernel_size=1)
+        self.fc2 = nn.Conv2d(reduced_channels, in_channels, kernel_size=1)
 
+    def forward(self, x):
+        scale = F.adaptive_avg_pool2d(x, 1)
+        scale = self.fc1(scale)
+        scale = F.relu(scale, inplace=True)
+        scale = self.fc2(scale)
+        scale = torch.sigmoid(scale)
+        return x * scale
 
 class ShuffleNetV2(nn.Module):
     def __init__(self, num_classes=2):
@@ -76,10 +98,11 @@ class ShuffleNetV2(nn.Module):
             nn.ReLU(inplace=True)
         )
 
-        self.stage2 = self._make_stage(8, 16, 2)  # 增加块数
-        self.stage3 = self._make_stage(16, 32, 2)  # 增加块数
-        self.stage4 = self._make_stage(32, 64, 1)  # 添加新阶段
+        self.stage2 = self._make_stage(8, 16, 1)
+        self.stage3 = self._make_stage(16, 32, 1)
+        self.stage4 = self._make_stage(32, 64, 1)
 
+        self.se = SqueezeExcite(64)
         self.fc = nn.Linear(64, num_classes)
 
     def _make_stage(self, in_channels, out_channels, num_blocks):
@@ -94,10 +117,169 @@ class ShuffleNetV2(nn.Module):
         x = self.stage1(x)
         x = self.stage2(x)
         x = self.stage3(x)
-        x = self.stage4(x)  # 添加新阶段到前向传播中
+        x = self.stage4(x)
+        x = self.se(x)
         x = F.adaptive_avg_pool2d(x, 1).view(x.size(0), -1)
         x = self.fc(x)
         return x
+
+class OptimizedAFNet(nn.Module):
+    def __init__(self):
+        super(OptimizedAFNet, self).__init__()
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(in_channels=1, out_channels=8, kernel_size=(7, 1), stride=(2, 1), padding=0),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+            nn.BatchNorm2d(8, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
+        )
+
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(in_channels=8, out_channels=16, kernel_size=(5, 1), stride=(2, 1), padding=0),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+            nn.BatchNorm2d(16, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
+        )
+
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(3, 1), stride=(2, 1), padding=0),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+            nn.BatchNorm2d(32, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
+        )
+
+        self.global_avg_pool = nn.AdaptiveAvgPool2d((1, 1))
+
+        self.fc1 = nn.Sequential(
+            nn.Dropout(0.5),
+            nn.Linear(in_features=32, out_features=16),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+        )
+
+        self.fc2 = nn.Sequential(
+            nn.Linear(in_features=16, out_features=2)
+        )
+
+    def forward(self, input):
+        conv1_output = self.conv1(input)
+        conv2_output = self.conv2(conv1_output)
+        conv3_output = self.conv3(conv2_output)
+
+        pooled_output = self.global_avg_pool(conv3_output)
+        pooled_output = pooled_output.view(pooled_output.size(0), -1)  # Flatten the tensor
+
+        fc1_output = self.fc1(pooled_output)
+        fc2_output = self.fc2(fc1_output)
+        return fc2_output
+
+class SimpleCNN(nn.Module):
+    def __init__(self):
+        super(SimpleCNN, self).__init__()
+        
+        # 第一层卷积层
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=16, kernel_size=(3, 1), stride=1, padding=1)
+        self.pool = nn.MaxPool2d(kernel_size=(2, 1), stride=(2, 1))
+        
+        # 第二层卷积层
+        self.conv2 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(3, 1), stride=1, padding=1)
+        
+        # 全连接层
+        self.fc1 = nn.Linear(32 * 312 * 5, 128)  # 根据打印的形状调整输入大小
+        self.fc2 = nn.Linear(128, 2)
+        
+    def forward(self, x):
+        x = self.pool(F.relu(self.conv1(x)))  # 形状变为 (batch_size, 16, 625, 1)
+        x = self.pool(F.relu(self.conv2(x)))  # 形状变为 (batch_size, 32, 312, 5)
+
+
+        x = x.view(x.size(0), -1)  # 自动计算展平后的大小
+        
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        
+        return x
+
+class AFNet(nn.Module):
+    def __init__(self):
+        super(AFNet, self).__init__()
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(in_channels=1, out_channels=3, kernel_size=(6, 1), stride=(2, 1), padding=0),
+            nn.ReLU(True),
+            nn.BatchNorm2d(3, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
+        )
+
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(in_channels=3, out_channels=5, kernel_size=(5, 1), stride=(2, 1), padding=0),
+            nn.ReLU(True),
+            nn.BatchNorm2d(5, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
+        )
+
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(in_channels=5, out_channels=10, kernel_size=(4, 1), stride=(2, 1), padding=0),
+            nn.ReLU(True),
+            nn.BatchNorm2d(10, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
+        )
+
+        self.conv4 = nn.Sequential(
+            nn.Conv2d(in_channels=10, out_channels=20, kernel_size=(4, 1), stride=(2, 1), padding=0),
+            nn.ReLU(True),
+            nn.BatchNorm2d(20, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
+        )
+
+        self.conv5 = nn.Sequential(
+            nn.Conv2d(in_channels=20, out_channels=30, kernel_size=(3, 1), stride=(2, 1), padding=0),
+            nn.ReLU(True),
+            nn.BatchNorm2d(30, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
+        )
+
+        self.conv6 = nn.Sequential(
+            nn.Conv2d(in_channels=30, out_channels=40, kernel_size=(3, 1), stride=(2, 1), padding=0),
+            nn.ReLU(True),
+            nn.BatchNorm2d(40, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
+        )
+
+        self.conv7 = nn.Sequential(
+            nn.Conv2d(in_channels=40, out_channels=50, kernel_size=(2, 1), stride=(2, 1), padding=0),
+            nn.ReLU(True),
+            nn.BatchNorm2d(50, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
+        )
+
+        # 更新全连接层输入特征数
+        self.fc_input_features = 50 * 9 * 1  # 根据实际输出形状更新为 450
+
+        self.fc1 = nn.Sequential(
+            nn.Dropout(0.5),
+            nn.Linear(in_features=self.fc_input_features, out_features=50)
+        )
+        self.fc2 = nn.Sequential(
+            nn.Linear(in_features=50, out_features=10)
+        )
+        self.fc3 = nn.Sequential(
+            nn.Linear(in_features=10, out_features=2)
+        )
+
+    def forward(self, input):
+
+        conv1_output = self.conv1(input)
+        
+        conv2_output = self.conv2(conv1_output)
+        
+        conv3_output = self.conv3(conv2_output)
+        
+        conv4_output = self.conv4(conv3_output)
+        
+        conv5_output = self.conv5(conv4_output)
+        
+        conv6_output = self.conv6(conv5_output)
+        
+        conv7_output = self.conv7(conv6_output)
+        
+        conv7_output = conv7_output.view(-1, self.fc_input_features)
+
+        fc1_output = F.relu(self.fc1(conv7_output))
+        
+        fc2_output = F.relu(self.fc2(fc1_output))
+        
+        fc3_output = self.fc3(fc2_output)
+        
+        return fc3_output
+
 
 
 class BasicBlock(nn.Module):
@@ -309,64 +491,6 @@ class SimplifiedEfficientNet(nn.Module):
         return x
 
 
-class OptimizedAFNet(nn.Module): 
-    def __init__(self):
-        super(OptimizedAFNet, self).__init__()
-        self.conv1 = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=16, kernel_size=(7, 1), stride=(2, 1), padding=0),
-            nn.LeakyReLU(negative_slope=0.1, inplace=True),
-            nn.BatchNorm2d(16, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
-        )
-
-        self.conv2 = nn.Sequential(
-            nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(5, 1), stride=(2, 1), padding=0),
-            nn.LeakyReLU(negative_slope=0.1, inplace=True),
-            nn.BatchNorm2d(32, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
-        )
-
-        self.conv3 = nn.Sequential(
-            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=(5, 1), stride=(2, 1), padding=0),
-            nn.LeakyReLU(negative_slope=0.1, inplace=True),
-            nn.BatchNorm2d(64, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
-        )
-
-        self.conv4 = nn.Sequential(
-            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(3, 1), stride=(2, 1), padding=0),
-            nn.LeakyReLU(negative_slope=0.1, inplace=True),
-            nn.BatchNorm2d(128, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
-        )
-
-        self.conv5 = nn.Sequential(
-            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 1), stride=(2, 1), padding=0),
-            nn.LeakyReLU(negative_slope=0.1, inplace=True),
-            nn.BatchNorm2d(128, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
-        )
-
-        self.global_avg_pool = nn.AdaptiveAvgPool2d((1, 1))
-
-        self.fc1 = nn.Sequential(
-            nn.Dropout(0.5),
-            nn.Linear(in_features=128, out_features=64),
-            nn.LeakyReLU(negative_slope=0.1, inplace=True),
-        )
-
-        self.fc2 = nn.Sequential(
-            nn.Linear(in_features=64, out_features=2)
-        )
-
-    def forward(self, input):
-        conv1_output = self.conv1(input)
-        conv2_output = self.conv2(conv1_output)
-        conv3_output = self.conv3(conv2_output)
-        conv4_output = self.conv4(conv3_output)
-        conv5_output = self.conv5(conv4_output)
-
-        pooled_output = self.global_avg_pool(conv5_output)
-        pooled_output = pooled_output.view(pooled_output.size(0), -1)  # Flatten the tensor
-
-        fc1_output = self.fc1(pooled_output)
-        fc2_output = self.fc2(fc1_output)
-        return fc2_output
 
 class SimpleCNN(nn.Module):
     def __init__(self):
