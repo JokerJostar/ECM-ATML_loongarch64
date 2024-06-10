@@ -23,6 +23,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class SqueezeExciteAF(nn.Module):
     def __init__(self, in_channels, reduction=4):
         super(SqueezeExciteAF, self).__init__()
@@ -33,7 +34,7 @@ class SqueezeExciteAF(nn.Module):
     def forward(self, x):
         scale = F.adaptive_avg_pool2d(x, 1)
         scale = self.fc1(scale)
-        scale = F.silu(scale)  # 使用SiLU激活函数
+        scale = F.leaky_relu(scale, negative_slope=0.1, inplace=True)
         scale = self.fc2(scale)
         scale = torch.sigmoid(scale)
         return x * scale
@@ -43,32 +44,32 @@ class AFNet(nn.Module):
         super(AFNet, self).__init__()
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_channels=1, out_channels=4, kernel_size=(6, 1), stride=(2,1), padding=0),
-            nn.SiLU(inplace=True),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
             nn.BatchNorm2d(4, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
         )
 
         self.conv2 = nn.Sequential(
             nn.Conv2d(in_channels=4, out_channels=8, kernel_size=(5, 1), stride=(2,1), padding=0),
-            nn.SiLU(inplace=True),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
             nn.BatchNorm2d(8, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
         )
 
         self.conv3 = nn.Sequential(
             nn.Conv2d(in_channels=8, out_channels=16, kernel_size=(4, 1), stride=(2,1), padding=0),
-            nn.SiLU(inplace=True),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
             nn.BatchNorm2d(16, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
             SqueezeExciteAF(16)
         )
 
         self.conv4 = nn.Sequential(
             nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(4, 1), stride=(2,1), padding=0),
-            nn.SiLU(inplace=True),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
             nn.BatchNorm2d(32, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
         )
 
         self.conv5 = nn.Sequential(
             nn.Conv2d(in_channels=32, out_channels=32, kernel_size=(4, 1), stride=(2,1), padding=0),
-            nn.SiLU(inplace=True),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
             nn.BatchNorm2d(32, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
             SqueezeExciteAF(32)
         )
@@ -76,7 +77,7 @@ class AFNet(nn.Module):
         self.fc1 = nn.Sequential(
             nn.Dropout(0.5),  # 使用适度的Dropout
             nn.Linear(in_features=1184, out_features=10),
-            nn.SiLU(inplace=True)  # 使用SiLU激活函数
+            nn.LeakyReLU(negative_slope=0.1, inplace=True)  # 使用LeakyReLU激活函数
         )
         self.fc2 = nn.Sequential(
             nn.Linear(in_features=10, out_features=2)
