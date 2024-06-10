@@ -23,6 +23,76 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+class SqueezeExciteAF(nn.Module):
+    def __init__(self, in_channels, reduction=4):
+        super(SqueezeExciteAF, self).__init__()
+        reduced_channels = in_channels // reduction
+        self.fc1 = nn.Conv2d(in_channels, reduced_channels, kernel_size=1)
+        self.fc2 = nn.Conv2d(reduced_channels, in_channels, kernel_size=1)
+
+    def forward(self, x):
+        scale = F.adaptive_avg_pool2d(x, 1)
+        scale = self.fc1(scale)
+        scale = F.relu(scale, inplace=True)
+        scale = self.fc2(scale)
+        scale = torch.sigmoid(scale)
+        return x * scale
+
+class AFNet(nn.Module):
+    def __init__(self):
+        super(AFNet, self).__init__()
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(in_channels=1, out_channels=3, kernel_size=(6, 1), stride=(2,1), padding=0),
+            nn.SiLU(True),
+            nn.BatchNorm2d(3, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
+        )
+
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(in_channels=3, out_channels=5, kernel_size=(5, 1), stride=(2,1), padding=0),
+            nn.SiLU(True),
+            nn.BatchNorm2d(5, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
+        )
+
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(in_channels=5, out_channels=10, kernel_size=(4, 1), stride=(2,1), padding=0),
+            nn.SiLU(True),
+            nn.BatchNorm2d(10, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
+            SqueezeExciteAF(10)
+        )
+
+        self.conv4 = nn.Sequential(
+            nn.Conv2d(in_channels=10, out_channels=20, kernel_size=(4, 1), stride=(2,1), padding=0),
+            nn.SiLU(True),
+            nn.BatchNorm2d(20, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
+        )
+
+        self.conv5 = nn.Sequential(
+            nn.Conv2d(in_channels=20, out_channels=20, kernel_size=(4, 1), stride=(2,1), padding=0),
+            nn.SiLU(True),
+            nn.BatchNorm2d(20, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
+            SqueezeExciteAF(20)
+        )
+
+        self.fc1 = nn.Sequential(
+            nn.Dropout(0.6),  # 增强Dropout
+            nn.Linear(in_features=740, out_features=10)
+        )
+        self.fc2 = nn.Sequential(
+            nn.Linear(in_features=10, out_features=2)
+        )
+
+    def forward(self, input):
+        conv1_output = self.conv1(input)
+        conv2_output = self.conv2(conv1_output)
+        conv3_output = self.conv3(conv2_output)
+        conv4_output = self.conv4(conv3_output)
+        conv5_output = self.conv5(conv4_output)
+        conv5_output = conv5_output.view(-1, 740)
+
+        fc1_output = F.silu(self.fc1(conv5_output))
+        fc2_output = self.fc2(fc1_output)
+        return fc2_output
+
 class DepthwiseSeparableConv(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
         super(DepthwiseSeparableConv, self).__init__()
@@ -37,6 +107,21 @@ class DepthwiseSeparableConv(nn.Module):
         x = self.bn(x)
         x = self.relu(x)
         return x
+
+class SqueezeExcite(nn.Module):
+    def __init__(self, in_channels, reduction=4):
+        super(SqueezeExcite, self).__init__()
+        reduced_channels = in_channels // reduction
+        self.fc1 = nn.Conv2d(in_channels, reduced_channels, kernel_size=1)
+        self.fc2 = nn.Conv2d(reduced_channels, in_channels, kernel_size=1)
+
+    def forward(self, x):
+        scale = F.adaptive_avg_pool2d(x, 1)
+        scale = self.fc1(scale)
+        scale = F.relu(scale, inplace=True)
+        scale = self.fc2(scale)
+        scale = torch.sigmoid(scale)
+        return x * scale
 
 class ShuffleNetV2Block(nn.Module):
     def __init__(self, in_channels, out_channels, stride):
@@ -73,37 +158,22 @@ class ShuffleNetV2Block(nn.Module):
             out = torch.cat((self.branch_proj(x), self.branch_main(x)), dim=1)
         return out
 
-class SqueezeExcite(nn.Module):
-    def __init__(self, in_channels, reduction=4):
-        super(SqueezeExcite, self).__init__()
-        reduced_channels = in_channels // reduction
-        self.fc1 = nn.Conv2d(in_channels, reduced_channels, kernel_size=1)
-        self.fc2 = nn.Conv2d(reduced_channels, in_channels, kernel_size=1)
-
-    def forward(self, x):
-        scale = F.adaptive_avg_pool2d(x, 1)
-        scale = self.fc1(scale)
-        scale = F.relu(scale, inplace=True)
-        scale = self.fc2(scale)
-        scale = torch.sigmoid(scale)
-        return x * scale
-
 class ShuffleNetV2(nn.Module):
     def __init__(self, num_classes=2):
         super(ShuffleNetV2, self).__init__()
 
         self.stage1 = nn.Sequential(
-            nn.Conv2d(1, 8, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(8),
+            nn.Conv2d(1, 16, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(16),
             nn.ReLU(inplace=True)
         )
 
-        self.stage2 = self._make_stage(8, 16, 1)
-        self.stage3 = self._make_stage(16, 32, 1)
-        self.stage4 = self._make_stage(32, 64, 1)
+        self.stage2 = self._make_stage(16, 32, 2)  # 增加块数
+        self.stage3 = self._make_stage(32, 64, 2)  # 增加块数
+        self.stage4 = self._make_stage(64, 128, 1)  # 保持单个块
 
-        self.se = SqueezeExcite(64)
-        self.fc = nn.Linear(64, num_classes)
+        self.se = SqueezeExcite(128)
+        self.fc = nn.Linear(128, num_classes)
 
     def _make_stage(self, in_channels, out_channels, num_blocks):
         layers = []
@@ -195,90 +265,6 @@ class SimpleCNN(nn.Module):
         
         return x
 
-class AFNet(nn.Module):
-    def __init__(self):
-        super(AFNet, self).__init__()
-        self.conv1 = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=3, kernel_size=(6, 1), stride=(2, 1), padding=0),
-            nn.ReLU(True),
-            nn.BatchNorm2d(3, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
-        )
-
-        self.conv2 = nn.Sequential(
-            nn.Conv2d(in_channels=3, out_channels=5, kernel_size=(5, 1), stride=(2, 1), padding=0),
-            nn.ReLU(True),
-            nn.BatchNorm2d(5, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
-        )
-
-        self.conv3 = nn.Sequential(
-            nn.Conv2d(in_channels=5, out_channels=10, kernel_size=(4, 1), stride=(2, 1), padding=0),
-            nn.ReLU(True),
-            nn.BatchNorm2d(10, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
-        )
-
-        self.conv4 = nn.Sequential(
-            nn.Conv2d(in_channels=10, out_channels=20, kernel_size=(4, 1), stride=(2, 1), padding=0),
-            nn.ReLU(True),
-            nn.BatchNorm2d(20, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
-        )
-
-        self.conv5 = nn.Sequential(
-            nn.Conv2d(in_channels=20, out_channels=30, kernel_size=(3, 1), stride=(2, 1), padding=0),
-            nn.ReLU(True),
-            nn.BatchNorm2d(30, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
-        )
-
-        self.conv6 = nn.Sequential(
-            nn.Conv2d(in_channels=30, out_channels=40, kernel_size=(3, 1), stride=(2, 1), padding=0),
-            nn.ReLU(True),
-            nn.BatchNorm2d(40, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
-        )
-
-        self.conv7 = nn.Sequential(
-            nn.Conv2d(in_channels=40, out_channels=50, kernel_size=(2, 1), stride=(2, 1), padding=0),
-            nn.ReLU(True),
-            nn.BatchNorm2d(50, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
-        )
-
-        # 更新全连接层输入特征数
-        self.fc_input_features = 50 * 9 * 1  # 根据实际输出形状更新为 450
-
-        self.fc1 = nn.Sequential(
-            nn.Dropout(0.5),
-            nn.Linear(in_features=self.fc_input_features, out_features=50)
-        )
-        self.fc2 = nn.Sequential(
-            nn.Linear(in_features=50, out_features=10)
-        )
-        self.fc3 = nn.Sequential(
-            nn.Linear(in_features=10, out_features=2)
-        )
-
-    def forward(self, input):
-
-        conv1_output = self.conv1(input)
-        
-        conv2_output = self.conv2(conv1_output)
-        
-        conv3_output = self.conv3(conv2_output)
-        
-        conv4_output = self.conv4(conv3_output)
-        
-        conv5_output = self.conv5(conv4_output)
-        
-        conv6_output = self.conv6(conv5_output)
-        
-        conv7_output = self.conv7(conv6_output)
-        
-        conv7_output = conv7_output.view(-1, self.fc_input_features)
-
-        fc1_output = F.relu(self.fc1(conv7_output))
-        
-        fc2_output = F.relu(self.fc2(fc1_output))
-        
-        fc3_output = self.fc3(fc2_output)
-        
-        return fc3_output
 
 
 

@@ -14,7 +14,7 @@ MODEL_SAVE_PATH = 'temp/saved_model/saved'
 INPUT_SIZE = 1250
 
 # The number of epochs for training the model
-NUM_EPOCHS = 1
+NUM_EPOCHS = 20
 
 # The size of the batches used in training and validation
 BATCH_SIZE = 32
