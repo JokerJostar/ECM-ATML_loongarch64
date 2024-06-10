@@ -23,7 +23,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 class SqueezeExciteAF(nn.Module):
     def __init__(self, in_channels, reduction=4):
         super(SqueezeExciteAF, self).__init__()
@@ -34,7 +33,7 @@ class SqueezeExciteAF(nn.Module):
     def forward(self, x):
         scale = F.adaptive_avg_pool2d(x, 1)
         scale = self.fc1(scale)
-        scale = F.relu(scale, inplace=True)
+        scale = F.silu(scale)  # 使用SiLU激活函数
         scale = self.fc2(scale)
         scale = torch.sigmoid(scale)
         return x * scale
@@ -76,7 +75,8 @@ class AFNet(nn.Module):
 
         self.fc1 = nn.Sequential(
             nn.Dropout(0.5),  # 使用适度的Dropout
-            nn.Linear(in_features=1184, out_features=10)
+            nn.Linear(in_features=1184, out_features=10),
+            nn.SiLU(inplace=True)  # 使用SiLU激活函数
         )
         self.fc2 = nn.Sequential(
             nn.Linear(in_features=10, out_features=2)
@@ -90,9 +90,10 @@ class AFNet(nn.Module):
         conv5_output = self.conv5(conv4_output)
         conv5_output = conv5_output.view(conv5_output.size(0), -1)
 
-        fc1_output = F.leaky_relu(self.fc1(conv5_output), negative_slope=0.1)
+        fc1_output = self.fc1(conv5_output)
         fc2_output = self.fc2(fc1_output)
         return fc2_output
+
 class DepthwiseSeparableConv(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
         super(DepthwiseSeparableConv, self).__init__()
