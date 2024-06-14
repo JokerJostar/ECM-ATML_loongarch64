@@ -13,6 +13,7 @@ class ECGDataset(Dataset):
         self.data_dir = data_dir
         self.files = [f for f in os.listdir(data_dir) if f.endswith('.txt')]
         self.labels = [self._get_label(f) for f in self.files]
+        print(f"Labels range: {np.min(self.labels)} - {np.max(self.labels)}")
 
     def _get_label(self, filename):
         label_part = filename.split('-')[1]

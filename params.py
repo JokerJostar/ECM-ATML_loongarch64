@@ -5,7 +5,7 @@
 AVOID_FILE_PATH = './avoid.txt'
 
 # Directory where the training data is stored
-DATA_DIR = '/home/inspur/nfs/lyq/training_dataset/train_data'
+DATA_DIR = 'ttdata'
 
 # Path where the trained model will be saved
 MODEL_SAVE_PATH = 'temp/saved_model/saved'
@@ -21,7 +21,7 @@ BATCH_SIZE = 32
 
 # The minimum, maximum, and step size for generating learning rates
 LR_MIN = 0.0015 # Minimum learning rate to try
-LR_MAX = 0.00250   # Maximum learning rate to try
+LR_MAX = 0.0050   # Maximum learning rate to try
 STEP = 0.0005   # Step size for incrementing the learning rate
 
 # The number of worker threads to use for loading data
@@ -34,4 +34,6 @@ PREFETCH_FACTOR = 4   # params on v100
 
 # Deciding when to write the current learning_rate to avoid.txt
 AVOID_PARAM = 0.6
+
+LEARING_RATE = 0.0015
 

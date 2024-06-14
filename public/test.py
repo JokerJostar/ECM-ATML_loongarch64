@@ -46,12 +46,11 @@ def evaluate(model, dataloader, device):
     return y_true, y_pred
 
 
-def test_model(model):
-    data_dir = './test_data/'  # 测试数据目录
+def test_model(model,model_file):
+    data_dir = './ttdata/'  # 测试数据目录
     batch_size = 1000  # 批处理大小
     device = 'cuda' if torch.cuda.is_available() else 'cpu'  # 使用的设备，cpu或cuda
-    model_path = 'temp/saved_model/saved.pth'  # 模型路径
-    output_dir = './temp/records/'  # 输出记录的目录
+    output_dir = os.path.join(model_file, 'temp', 'records')  # 输出记录的目录
 
     num_workers = NUM_WORKERS
     prefetch_factor = PREFETCH_FACTOR  # 可以根据实际情况调整
@@ -61,7 +60,6 @@ def test_model(model):
                             prefetch_factor=prefetch_factor, persistent_workers=persistent_workers)
 
     # 加载模型
-    model = torch.load(model_path, map_location=torch.device(device))
     model.to(device)
     model.eval()  # 设置为评估模式
 
@@ -78,8 +76,18 @@ def test_model(model):
 
 
     # 转换为0到100之间的整数，并取模100
-    max_metric_transformed = int((max(f1, accuracy, precision, recall) * 100) % 100)
-    min_metric_transformed = int((min(f1, accuracy, precision, recall) * 100) % 100)
+    max_metric = max(f1, accuracy, precision, recall)
+    min_metric = min(f1, accuracy, precision, recall)
+
+    max_metric_transformed = int((max_metric * 100) % 100)
+    min_metric_transformed = int((min_metric * 100) % 100)
+
+    # 如果原始值是1.0，并且结果为0，将其设置为100
+    if max_metric == 1.0 and max_metric_transformed == 0:
+        max_metric_transformed = 100
+
+    if min_metric == 1.0 and min_metric_transformed == 0:
+        min_metric_transformed = 100
 
     # 打印并保存指标
     os.makedirs(output_dir, exist_ok=True)

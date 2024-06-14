@@ -624,5 +624,3 @@ class ShuffleNetV2Custom1d(nn.Module):
         return out
 
 
-model_classes = [AFNet, ShuffleNetV2, OptimizedAFNet]
-

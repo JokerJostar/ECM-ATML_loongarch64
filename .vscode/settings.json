@@ -70,5 +70,6 @@
         "typeinfo": "cpp",
         "valarray": "cpp",
         "variant": "cpp"
-    }
+    },
+    "cmake.sourceDirectory": "/home/jostar/workspace/ECM-ATML_loongarch64/loongarch"
 }
