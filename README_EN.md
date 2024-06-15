@@ -1,4 +1,6 @@
-# ECM: Electrocardiogram Classification Model and ATML: Automated Hyperparameter Optimization for Unsupervised Training Framework
+# ECM: Electrocardiogram Classification Model and ATML: Automated Model Structure and Hyperparameter Optimization for Unsupervised Training Framework
+
+
 
 [简体中文](README.md) | English
 
