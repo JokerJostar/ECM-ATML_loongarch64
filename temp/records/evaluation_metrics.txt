@@ -1,5 +1,5 @@
-F1 Score: 0.0000
-Accuracy: 0.5333
-Precision: 1.0000
-Recall: 0.0000
+F1 Score: 0.8897
+Accuracy: 0.8700
+Precision: 0.8357
+Recall: 0.9510
 ONNX file size: 77.45 KB

@@ -1,0 +1,7 @@
+F1 Score: 0.9501
+Accuracy: 0.9446
+Precision: 0.9434
+Recall: 0.9569
+Learning rate: 0.0015
+Model: AFNet
+ONNX file size: 84.91 KB

@@ -1,0 +1,7 @@
+F1 Score: 0.9237
+Accuracy: 0.9157
+Precision: 0.9213
+Recall: 0.9261
+Learning rate: 0.0015
+Model: ShuffleNetV2
+ONNX file size: 161.24 KB

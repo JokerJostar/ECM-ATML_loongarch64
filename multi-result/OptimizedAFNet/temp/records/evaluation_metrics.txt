@@ -1,7 +1,7 @@
-F1 Score: 0.6364
-Accuracy: 0.4667
-Precision: 0.4667
-Recall: 1.0000
+F1 Score: 0.8190
+Accuracy: 0.7951
+Precision: 0.7978
+Recall: 0.8413
 Learning rate: 0.0045
 Model: OptimizedAFNet
 ONNX file size: 15.09 KB
