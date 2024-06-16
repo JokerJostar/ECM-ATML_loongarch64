@@ -5,7 +5,7 @@
 AVOID_FILE_PATH = './avoid.txt'
 
 # Directory where the training data is stored
-DATA_DIR = 'ttdata'
+DATA_DIR = 'train_data'
 
 # Path where the trained model will be saved
 MODEL_SAVE_PATH = 'temp/saved_model/saved'
@@ -14,7 +14,7 @@ MODEL_SAVE_PATH = 'temp/saved_model/saved'
 INPUT_SIZE = 1250
 
 # The number of epochs for training the model
-NUM_EPOCHS = 20
+NUM_EPOCHS = 2
 
 # The size of the batches used in training and validation
 BATCH_SIZE = 32
