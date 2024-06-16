@@ -51,7 +51,7 @@ For loongarch deployment, please visit [deploy_loongarch](https://github.com/Jok
 The project's directory structure is as follows:
 
 ```
-├── 100-46                  # Results of the second phase of Loop Search (xx-yy, where xx is the maximum value of various metrics, and yy is the minimum value)
+├── 93-89                   # Results of the second phase of Loop Search (xx-yy, where xx is the maximum value of various metrics, and yy is the minimum value)
 ├── avoid.txt               # Definition of hyperparameter pruning
 ├── multi-result            # Results of the first phase of Loop Search
 ├── params.py               # Parameter settings
