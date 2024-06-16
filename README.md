@@ -60,7 +60,7 @@ loongarch部署相关请前往[deploy_loongarch](https://github.com/JokerJostar/
 该项目的目录结构如下：
 
 ```
-├── 100-46                  #Loop Search第二阶段的结果（xx-yy,其中xx为各项指标的最大值，yy为最小值）
+├── 93-89                   #Loop Search第二阶段的结果（xx-yy,其中xx为各项指标的最大值，yy为最小值）
 ├── avoid.txt               #超参数裁枝定义
 ├── multi-result            #loop search第一阶段的结果
 ├── params.py               #各参数的设置
