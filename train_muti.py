@@ -143,7 +143,7 @@ def main():
                     match = re.match(r'(\d+)-(\d+)', folder_name)
                     if match:
                         xx, yy = map(int, match.groups())
-                        if yy >= 101:
+                        if yy >= 97:
                             print('yy is satisfied, exiting...')
                             sys.exit(0)
                         else:

@@ -33,7 +33,7 @@ PREFETCH_FACTOR = 4   # params on v100
 # PREFETCH_FACTOR = 2 # params on pc
 
 # Deciding when to write the current learning_rate to avoid.txt
-AVOID_PARAM = 0.6
+AVOID_PARAM = 0.95
 
 LEARING_RATE = 0.0015
 
